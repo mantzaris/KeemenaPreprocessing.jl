@@ -12,4 +12,5 @@ Documentation for [KeemenaPreprocessing](https://github.com/mantzaris/KeemenaPre
 ```@autodocs
 Modules = [KeemenaPreprocessing]
 Order   = [:module, :type, :function]
+Private = false
 ```
