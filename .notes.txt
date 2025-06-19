@@ -1,0 +1,12 @@
+for the docs build
+
+julia --project=docs -e 'using Pkg; Pkg.instantiate(); include("docs/make.jl")'
+
+
+] activate .
+] dev .
+using Pkg
+Pkg.add("Revise")
+using Revise
+using KeemenaPreprocessing
+
