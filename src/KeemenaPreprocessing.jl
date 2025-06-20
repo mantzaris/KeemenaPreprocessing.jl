@@ -1,5 +1,6 @@
 module KeemenaPreprocessing
 
-# Write your package code here.
+include("core/types.jl")
+
 
 end
