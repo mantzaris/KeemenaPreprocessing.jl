@@ -9,8 +9,8 @@ struct Vocabulary{ID<:Unsigned}
 end
 
 struct CorpusStorage{ID<:Unsigned}
-    token_ids          :: Vector{ID}            # flattened
-    document_offsets   :: Vector{Offset}        # len = n_docs + 1
+    token_ids          :: Vector{ID} 
+    document_offsets   :: Vector{Offset}
     sentence_offsets   :: Union{Vector{Offset},Nothing}
     paragraph_offsets  :: Union{Vector{Offset},Nothing}
 end
@@ -32,3 +32,34 @@ struct PreprocessBundle{ID<:Unsigned}
     extras    :: Union{ExtraArrays,Nothing}
     levels    :: Dict{Symbol,Bool}
 end
+
+
+
+##############
+# Constructors
+
+const DEFAULT_LEVELS = Dict(
+    :character => false, :word => false, :sentence => false,
+    :paragraph => false, :document => false)
+
+function PreprocessBundle(corpus::CorpusStorage{ID},
+                          vocab :: Vocabulary{ID};
+                          metadata = PipelineMetadata(Dict()),
+                          extras   = nothing,
+                          levels   = DEFAULT_LEVELS) where {ID}
+
+    @assert corpus.document_offsets[end] == length(corpus.token_ids) + 1
+
+    if corpus.sentence_offsets !== nothing
+        @assert corpus.sentence_offsets[end] == length(corpus.token_ids) + 1
+    end
+
+    if corpus.paragraph_offsets !== nothing
+        @assert corpus.paragraph_offsets[end] == length(corpus.token_ids) + 1
+    end
+
+    PreprocessBundle{ID}(corpus, vocab, metadata, extras, copy(levels))
+end
+
+haslevel(pb::PreprocessBundle, lvl::Symbol) =
+    get(pb.levels, lvl, false)
