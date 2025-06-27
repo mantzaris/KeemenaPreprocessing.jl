@@ -3,7 +3,7 @@
 module KeemenaPreprocessing
 __precompile__()
 
-using Glob 
+using Glob
 
 
 #core data types
@@ -19,8 +19,8 @@ end
 
 
 #storage
-include("storage/readers.jl")
-include("storage/writers.jl")
+include("storage/raw_readers.jl")
+include("storage/bundle_io.jl")
 include("storage/preprocessor_state.jl")
 
 
@@ -39,6 +39,8 @@ export PreprocessConfiguration,
        transform_with_preprocessor,
        save_preprocess_bundle,
        load_preprocess_bundle
+
+export save_preprocess_bundle, load_preprocess_bundle
 
 
 end
