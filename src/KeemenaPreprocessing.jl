@@ -3,6 +3,8 @@
 module KeemenaPreprocessing
 __precompile__()
 
+using Glob 
+
 
 #core data types
 include(joinpath(@__DIR__, "core", "types.jl"))
