@@ -49,9 +49,10 @@ function assemble_bundle(tokens::Vector{String},
 
     par_offs = haskey(offsets, :paragraph) ? convert_vec(offsets[:paragraph]) : nothing
     sen_offs = haskey(offsets, :sentence)  ? convert_vec(offsets[:sentence])  : nothing
+    char_offs= haskey(offsets, :character) ? convert_vec(offsets[:character]) : nothing
     # char_offs reserved for future support
 
-    corpus = CorpusStorage{IdT,OffsetT}(token_ids, doc_offs, sen_offs, par_offs)
+    corpus = CorpusStorage{IdT,OffsetT}(token_ids, doc_offs, par_offs, sen_offs, char_offs)
 
     # 3. levels_present map
     levels = copy(DEFAULT_LEVELS)
@@ -59,6 +60,7 @@ function assemble_bundle(tokens::Vector{String},
     levels[:document]  = true                # guaranteed after this layer
     levels[:paragraph] = par_offs !== nothing
     levels[:sentence]  = sen_offs !== nothing
+    levels[:character] = char_offs !== nothing
     # :character remains false
 
     # 4. Pipeline metadata (store full configuration for provenance)

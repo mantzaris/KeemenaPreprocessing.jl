@@ -16,8 +16,9 @@ end
 struct CorpusStorage{IdT<:Unsigned, OffsetT<:Integer}
     token_ids         :: Vector{IdT}          # flat corpus
     document_offsets  :: Vector{OffsetT}           # length = D+1, 1-based, sentinel end
-    sentence_offsets  :: Union{Vector{OffsetT},Nothing}
     paragraph_offsets :: Union{Vector{OffsetT},Nothing}
+    sentence_offsets  :: Union{Vector{OffsetT},Nothing}
+    character_offsets  :: Union{Vector{OffsetT},Nothing}
 end
 
 

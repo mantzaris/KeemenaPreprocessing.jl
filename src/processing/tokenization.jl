@@ -51,9 +51,13 @@ function tokenize_and_segment(docs::Vector{String}, cfg::PreprocessConfiguration
     doc_offs = cfg.record_document_offsets  ? Int[1] : Int[]
     par_offs = cfg.record_paragraph_offsets ? Int[1] : Int[]
     sen_offs = cfg.record_sentence_offsets  ? Int[1] : Int[]
+    char_offs = cfg.record_character_offsets ? Int[] : Int[]
 
+    bytes_pos = 1
+    
     # main traversal
     for doc in docs
+        
         paragraphs = cfg.record_paragraph_offsets ? _split_paragraphs(doc) : (doc,)
 
         for para in paragraphs
@@ -64,6 +68,20 @@ function tokenize_and_segment(docs::Vector{String}, cfg::PreprocessConfiguration
                 if !cfg.preserve_empty_tokens
                     filter!(t -> !isempty(t), tkns)
                 end
+
+                #chars>>>
+                if cfg.record_character_offsets
+                    for tok in tkns
+                        push!(char_offs, bytes_pos)
+                        bytes_pos += ncodeunits(tok)
+                    end
+                    # !isempty(tkns) && (bytes_pos += 1) 
+                    # Advance by the *actual* delimiter length that followed the sentence,
+                    # not a hard-coded 1 byte
+                    bytes_pos += ncodeunits(sent) - sum(ncodeunits, tkns) # all whitespace/newlines inside `sent`
+                end
+                #<<<chars
+
                 append!(tokens, tkns)
                 cfg.record_sentence_offsets && push!(sen_offs, length(tokens)+1)
             end
@@ -77,6 +95,11 @@ function tokenize_and_segment(docs::Vector{String}, cfg::PreprocessConfiguration
     cfg.record_document_offsets  && (offs[:document]  = doc_offs)
     cfg.record_paragraph_offsets && (offs[:paragraph] = par_offs)
     cfg.record_sentence_offsets  && (offs[:sentence]  = sen_offs)
+
+    if cfg.record_character_offsets
+        push!(char_offs, bytes_pos)
+        offs[:character] = char_offs
+    end
 
     return tokens, offs
 end
