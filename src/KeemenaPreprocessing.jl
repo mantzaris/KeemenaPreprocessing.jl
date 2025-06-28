@@ -12,7 +12,7 @@ include(joinpath(@__DIR__, "core", "configuration.jl"))
 
 
 #processing
-for f in ("cleaning.jl","segmentation.jl","tokenization.jl",
+for f in ("cleaning.jl","tokenization.jl",
           "vocabulary.jl","assemble.jl")
     include(joinpath("processing", f))
 end

@@ -127,7 +127,7 @@ function PreprocessConfiguration(;  # all kwargs are optional
         record_character_offsets = false,
         record_word_offsets      = true,
         record_sentence_offsets  = true,
-        record_paragraph_offsets = true,
+        record_paragraph_offsets = false,
         record_document_offsets  = true)
 
     @assert minimum_token_frequency >= 1 "minimum_token_frequency must be >= 1"
