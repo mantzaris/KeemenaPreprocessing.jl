@@ -3,12 +3,13 @@
 module KeemenaPreprocessing
 __precompile__()
 
+
 using Glob
 
 
 #core data types
-include(joinpath(@__DIR__, "core", "types.jl"))
 include(joinpath(@__DIR__, "core", "configuration.jl"))
+include(joinpath(@__DIR__, "core", "types.jl"))
 
 
 #processing
@@ -17,16 +18,23 @@ for f in ("cleaning.jl","tokenization.jl",
     include(joinpath("processing", f))
 end
 
+export clean_documents #cleaning.jl
+export tokenize_and_segment #tokenization.jl
+export build_vocabulary #vocabulary.jl
+export assemble_bundle #assemble.jl
+
+
+include(joinpath(@__DIR__, "pipeline", "pipeline.jl"))
+
+export preprocess_corpus #pipeline.jl
+
 
 #storage
 include("storage/raw_readers.jl")
 include("storage/bundle_io.jl")
 include("storage/preprocessor_state.jl")
 
-
-#public api facing
-include(joinpath(@__DIR__, "pipeline", "pipeline.jl"))
-
+export Preprocessor, encode_corpus, build_preprocessor #preprocessor_state.jl
 
 export Vocabulary, CorpusStorage, PipelineMetadata,
        PreprocessBundle, with_extras!, haslevel,
@@ -34,7 +42,6 @@ export Vocabulary, CorpusStorage, PipelineMetadata,
 
 
 export PreprocessConfiguration,
-       preprocess_corpus,        # one-shot convenience
        fit_preprocessor,         # returns a reusable preprocessor
        transform_with_preprocessor,
        save_preprocess_bundle,

@@ -32,11 +32,10 @@ Runs the full pipeline on `train_sources`, building the vocabulary once
 Keyword arguments are forwarded exactly like in `preprocess_corpus`
 """
 function build_preprocessor(sources; kwargs...)
-    # 1. run normal pipeline -> train bundle (vocab frozen inside)
     train_bundle = preprocess_corpus(sources; kwargs...)
-    prep = Preprocessor(train_bundle.pipeline_metadata.configuration,
-                        train_bundle.vocabulary)
-    return prep, train_bundle
+    cfg   = train_bundle.pipeline_metadata.configuration 
+    vocab = train_bundle.vocabulary
+    return Preprocessor(cfg, vocab), train_bundle
 end
 
 
@@ -64,8 +63,8 @@ end
 
 
 function encode_corpus(bundle::PreprocessBundle, new_sources; kwargs...)
-    prep = Preprocessor(bundle.pipeline_metadata.configuration,
-                        bundle.vocabulary)
+    cfg  = bundle.pipeline_metadata.configuration
+    prep  = Preprocessor(cfg, bundle.vocabulary)
     return encode_corpus(prep, new_sources; kwargs...)
 end
 

@@ -23,10 +23,10 @@ end
 
 
 struct PipelineMetadata
-    configuration :: Dict{Symbol,Any} #cleaning and tokeniser params
+    configuration :: PreprocessConfiguration #cleaning and tokeniser params
 end
-PipelineMetadata() = PipelineMetadata(Dict{Symbol,Any}())
 
+PipelineMetadata() = PipelineMetadata(PreprocessConfiguration())
 
 
 """

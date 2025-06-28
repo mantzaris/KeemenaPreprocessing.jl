@@ -13,8 +13,7 @@ _ws_tokenizer(str::AbstractString) = split(str) .|> String
 # very small Unicode-word-boundary heuristic (good enough for English + mixed)
 const _WB_RE = r"(?<=\p{L}|\p{N})[\p{M}\p{Pc}\p{Pd}\p{Nd}\p{L}]*" #r"(?<=\\p{L}|\\p{N})[\\p{M}\\p{Pc}\\p{Pd}\\p{Nd}\\p{L}]*"
 
-_unicode_tokenizer(str::AbstractString) =
-    collect(eachmatch(_WB_RE, str)) .|> String
+_unicode_tokenizer(str::AbstractString) = [ String(m.match) for m in eachmatch(_WB_RE, str) ]
 
 
 _select_tokenizer(tk) =
@@ -24,8 +23,8 @@ _select_tokenizer(tk) =
     error("Unknown tokenizer $(tk); should have been validated earlier")
 
 
-_split_paragraphs(txt::String) = split(txt, r"\n{2,}") #split(txt, r"\\n{2,}")
-_split_sentences(txt::String)    = split(txt, r"(?<=[.!?])\s+") #split(p,  r"(?<=[.!?])\\s+")
+_split_paragraphs(txt::AbstractString) = split(txt, r"\n{2,}") #split(txt, r"\\n{2,}")
+_split_sentences(txt::AbstractString)    = split(txt, r"(?<=[.!?])\s+") #split(p,  r"(?<=[.!?])\\s+")
 
 
 """

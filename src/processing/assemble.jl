@@ -16,8 +16,7 @@ using ..KeemenaPreprocessing: PreprocessConfiguration,
 * `cfg`           : the same `PreprocessConfiguration`
 * `offset_type`   : integer type for offset vectors (`Int` by default)
 
-
-1. Map every token to its numeric ID (OOV → `<UNK>`)
+1. Map every token to its numeric ID (OOV -> `<UNK>`)
 2. Convert each offset vector to `Vector{offset_type}`; fabricate document
    offsets if they were not recorded
 3. Build a `levels_present` map
@@ -29,17 +28,17 @@ function assemble_bundle(tokens::Vector{String},
                          cfg::PreprocessConfiguration;
                          offset_type::Type{<:Integer}=Int) where {IdT<:Unsigned}
 
-    # 0. Ensure we have an <UNK> ID for out-of-vocabulary tokens
+    # 0 Ensure we have an <UNK> ID for out-of-vocabulary tokens
     unk_id = get(vocab.special_tokens, :unk, nothing)
     unk_id === nothing && throw(ArgumentError("Vocabulary lacks :unk token"))
 
-    # 1. Token -> ID, mapping unknowns to <UNK>
+    # 1 Token -> ID, mapping unknowns to <UNK>
     token_ids = Vector{IdT}(undef, length(tokens))
     for (i, tok) in pairs(tokens)
         token_ids[i] = get(vocab.token_to_id_map, tok, unk_id)
     end
 
-    # 2. Offset vectors (document offsets always present)
+    # 2 Offset vectors (document offsets always present)
     OffsetT     = offset_type
     convert_vec = v::Vector{Int} -> OffsetT.(v)
 
@@ -54,7 +53,7 @@ function assemble_bundle(tokens::Vector{String},
 
     corpus = CorpusStorage{IdT,OffsetT}(token_ids, doc_offs, par_offs, sen_offs, char_offs)
 
-    # 3. levels_present map
+    # 3 levels_present map
     levels = copy(DEFAULT_LEVELS)
     levels[:word]      = true
     levels[:document]  = true                # guaranteed after this layer
@@ -63,10 +62,10 @@ function assemble_bundle(tokens::Vector{String},
     levels[:character] = char_offs !== nothing
     # :character remains false
 
-    # 4. Pipeline metadata (store full configuration for provenance)
-    meta = PipelineMetadata(Dict(:configuration => cfg))
+    # 4 Pipeline metadata (store full configuration for provenance)
+    meta = PipelineMetadata(cfg) #PipelineMetadata(Dict(:configuration => cfg))
 
-    # 5. Assemble bundle (extras = nothing for v0.1)
+    # 5 Assemble bundle (extras = nothing for v0.1)
     return PreprocessBundle(corpus, vocab, meta, nothing, levels)
 end
 
