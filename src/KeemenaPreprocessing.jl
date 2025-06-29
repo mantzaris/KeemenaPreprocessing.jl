@@ -26,7 +26,7 @@ export assemble_bundle #assemble.jl
 
 include(joinpath(@__DIR__, "pipeline", "pipeline.jl"))
 
-export preprocess_corpus #pipeline.jl
+export preprocess_corpus, preprocess_corpus_streaming #pipeline.jl
 
 
 #storage
@@ -34,6 +34,7 @@ include("storage/raw_readers.jl")
 include("storage/bundle_io.jl")
 include("storage/preprocessor_state.jl")
 
+export stream_chunks #raw_readers.jl
 export Preprocessor, encode_corpus, build_preprocessor #preprocessor_state.jl
 
 export Vocabulary, CorpusStorage, PipelineMetadata,

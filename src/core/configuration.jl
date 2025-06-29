@@ -5,6 +5,8 @@
 # cfg2 = PreprocessConfiguration(cfg; trim_edges=false)  # copy-with
 
 struct PreprocessConfiguration
+    chunk_size                :: Int
+
     # Cleaning
     lowercase                 :: Bool
     strip_accents             :: Bool
@@ -118,6 +120,7 @@ bundle = preprocess_corpus(text_files; config = cfg, save_to = "bundle.jld2")
 ```
 """                              
 function PreprocessConfiguration(;  # all kwargs are optional
+        chunk_size                = 250_000,
         lowercase                 = true,
         strip_accents             = true,
         remove_control_characters = true,
@@ -144,6 +147,7 @@ function PreprocessConfiguration(;  # all kwargs are optional
     specials_dict = copy(special_tokens)
 
     return PreprocessConfiguration(
+        chunk_size,
         lowercase, strip_accents, remove_control_characters,
         remove_punctuation, normalise_whitespace, trim_edges,
         tokenizer_name, preserve_empty_tokens,

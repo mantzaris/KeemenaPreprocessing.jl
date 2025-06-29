@@ -41,7 +41,7 @@ Returns
 each offset vector follows the Julia sentinel convention:
 `offsets[:sentence][end] == length(tokens) + 1`
 """
-function tokenize_and_segment(docs::Vector{String}, cfg::PreprocessConfiguration)
+function tokenize_and_segment(chunks, cfg::PreprocessConfiguration)
 
     tok_fn   = _select_tokenizer(cfg.tokenizer_name)
     tokens   = String[]
@@ -54,10 +54,9 @@ function tokenize_and_segment(docs::Vector{String}, cfg::PreprocessConfiguration
 
     bytes_pos = 1
     
-    # main traversal
-    for doc in docs
+    for (chunk, terminal) in chunks #for doc in docs
         
-        paragraphs = cfg.record_paragraph_offsets ? _split_paragraphs(doc) : (doc,)
+        paragraphs = cfg.record_paragraph_offsets ? _split_paragraphs(chunk) : (chunk,)
 
         for para in paragraphs
             sentences = cfg.record_sentence_offsets ? _split_sentences(para) : (para,)
@@ -74,10 +73,9 @@ function tokenize_and_segment(docs::Vector{String}, cfg::PreprocessConfiguration
                         push!(char_offs, bytes_pos)
                         bytes_pos += ncodeunits(tok)
                     end
-                    # !isempty(tkns) && (bytes_pos += 1) 
-                    # Advance by the *actual* delimiter length that followed the sentence,
-                    # not a hard-coded 1 byte
+                    
                     bytes_pos += ncodeunits(sent) - sum(ncodeunits, tkns) # all whitespace/newlines inside `sent`
+                    # bytes_pos += !isempty(tkns) ? 1 : 0
                 end
                 #<<<chars
 
@@ -86,8 +84,19 @@ function tokenize_and_segment(docs::Vector{String}, cfg::PreprocessConfiguration
             end
             cfg.record_paragraph_offsets && push!(par_offs, length(tokens)+1)
         end
-        cfg.record_document_offsets && push!(doc_offs, length(tokens)+1)
+        
+        if terminal && cfg.record_document_offsets
+            push!(doc_offs, length(tokens) + 1)
+        end
     end
+
+    cfg.record_character_offsets && push!(char_offs, bytes_pos)
+
+    cfg.record_sentence_offsets  && isempty(sen_offs)  == false && sen_offs[end] != length(tokens)+1 &&
+        push!(sen_offs,  length(tokens)+1)
+
+    cfg.record_paragraph_offsets && isempty(par_offs) == false && par_offs[end] != length(tokens)+1 &&
+        push!(par_offs, length(tokens)+1)
 
     # package result dict
     offs = Dict{Symbol,Vector{Int}}()
@@ -95,12 +104,17 @@ function tokenize_and_segment(docs::Vector{String}, cfg::PreprocessConfiguration
     cfg.record_paragraph_offsets && (offs[:paragraph] = par_offs)
     cfg.record_sentence_offsets  && (offs[:sentence]  = sen_offs)
 
-    if cfg.record_character_offsets
-        push!(char_offs, bytes_pos)
-        offs[:character] = char_offs
-    end
+    cfg.record_character_offsets && (offs[:character] = char_offs)
 
     return tokens, offs
+end
+
+
+function tokenize_and_segment(docs::Vector{String},
+                              cfg::PreprocessConfiguration)
+    # Turn each whole document into a single-terminal chunk
+    iter = ((doc, true) for doc in docs)
+    return tokenize_and_segment(iter, cfg)
 end
 
 

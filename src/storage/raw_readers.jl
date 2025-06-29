@@ -64,3 +64,47 @@ function _read_file(path::AbstractString)::String
         read(io, String) |> x -> replace(x, _EOL_RE => "\n")
     end
 end
+
+
+# ----
+
+
+"""
+    stream_chunks(sources; chunk_bytes = 1<<20) → iterator
+
+Yields each source as **UTF-8**, split into at-most-`chunk_bytes` chunks
+Every chunk is a pair `(data::String, is_doc_terminal::Bool)`:
+
+* `is_doc_terminal = true`  → this chunk ends the current document
+* `false`                  → more chunks of the same document follow
+
+`split(txt) == r"\r\n|\r"` is still normalised to `'\n'`
+"""
+function stream_chunks(sources; chunk_bytes::Int = 1 << 20)
+    files = isa(sources, AbstractString) ? (sources,) : sources
+
+    return Channel{Tuple{String,Bool}}() do ch
+        for path in files
+            if isfile(path)
+                open(path, "r"; encoding = "UTF-8") do io
+                    while !eof(io)
+                        raw = read(io, UInt8, chunk_bytes)      # mutable bytes
+                        # ensure we end on a UTF-8 code-point boundary
+                        while !isempty(raw) &&
+                              (raw[end] & 0b1100_0000 == 0b1000_0000)
+                            pop!(raw)
+                            seek(io, -1, Base.Current)
+                        end
+                        str = replace(String(raw), _EOL_RE => "\n")
+                        put!(ch, (str, eof(io)))
+                    end
+                end
+
+            elseif isdir(path)
+                @warn "Ignoring directory $path"
+            else
+                put!(ch, (replace(path, _EOL_RE => "\n"), true))
+            end
+        end
+    end
+end

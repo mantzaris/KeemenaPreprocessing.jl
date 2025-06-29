@@ -189,5 +189,29 @@ end
 end
 
 
+@testset "basic paths for the chunks/docs" begin
+    cfg = PreprocessConfiguration(      # ← add this
+        record_sentence_offsets  = true,
+        record_paragraph_offsets = true,
+        record_document_offsets  = true,
+        record_character_offsets = true)
+
+    #  batch path 
+    docs   = ["foo bar", "baz"]
+    tok1, off1 = tokenize_and_segment(docs, cfg)
+    @test tok1 == ["foo", "bar", "baz"]
+
+    #  streaming path 
+    chunks = [("foo ", false), ("bar\n", true), ("baz", true)]
+    tok2, off2 = tokenize_and_segment(chunks, cfg)
+    @test tok2 == ["foo", "bar", "baz"]
+end
 
 
+@testset "basic chunk/streaming" begin
+    cfg  = PreprocessConfiguration(chunk_size = 4)  # tiny for test
+    bund = collect(preprocess_corpus_streaming(["a b", "c d e", "f"]; cfg = cfg))
+    @test length(bund) == 2            # first chunk 'a b c d', second 'e f'
+    total = sum(length(b.corpus_storage.token_ids) for b in bund)
+    @test total == 6
+end

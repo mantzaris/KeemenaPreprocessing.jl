@@ -44,6 +44,7 @@ transformation occurs).
 """
 function clean_documents(docs::Vector{String}, cfg::PreprocessConfiguration)
     out = similar(docs)
+    
     for (i, doc) in pairs(docs)
         s = doc
 
