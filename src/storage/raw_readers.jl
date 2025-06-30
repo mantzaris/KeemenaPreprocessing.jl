@@ -75,8 +75,8 @@ end
 Yields each source as **UTF-8**, split into at-most-`chunk_bytes` chunks
 Every chunk is a pair `(data::String, is_doc_terminal::Bool)`:
 
-* `is_doc_terminal = true`  → this chunk ends the current document
-* `false`                  → more chunks of the same document follow
+* `is_doc_terminal = true`  -> this chunk ends the current document
+* `false`                  -> more chunks of the same document follow
 
 `split(txt) == r"\r\n|\r"` is still normalised to `'\n'`
 """

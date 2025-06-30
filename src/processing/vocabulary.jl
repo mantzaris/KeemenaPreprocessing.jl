@@ -23,7 +23,7 @@ Steps
    whose frequency >= `cfg.minimum_token_frequency`)
 6. construct and return the `Vocabulary` object
 
-The returned object is immutable and ready for downstream models.
+the returned object is immutable and ready for downstream models
 """
 function build_vocabulary(tokens::Vector{String};
                           cfg::PreprocessConfiguration,
