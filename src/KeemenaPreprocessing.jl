@@ -9,7 +9,18 @@ using Glob
 
 #core data types
 include(joinpath(@__DIR__, "core", "configuration.jl"))
+
+export PreprocessConfiguration, byte_cfg
+
+
 include(joinpath(@__DIR__, "core", "types.jl"))
+
+export Vocabulary, VocabularyStore,
+       CorpusStorage, PipelineMetadata,
+       PreprocessBundle, 
+       with_extras!,
+       DEFAULT_LEVELS,
+       get_token_ids, get_vocabulary, has_level
 
 
 #processing
@@ -37,16 +48,11 @@ include("storage/preprocessor_state.jl")
 export stream_chunks #raw_readers.jl
 export Preprocessor, encode_corpus, build_preprocessor #preprocessor_state.jl
 
-export Vocabulary, CorpusStorage, PipelineMetadata,
-       PreprocessBundle, with_extras!, haslevel,
-       DEFAULT_LEVELS
-
-
-export PreprocessConfiguration,
-       fit_preprocessor,         # returns a reusable preprocessor
+export fit_preprocessor,         # returns a reusable preprocessor
        transform_with_preprocessor,
        save_preprocess_bundle,
        load_preprocess_bundle
+
 
 export save_preprocess_bundle, load_preprocess_bundle
 
