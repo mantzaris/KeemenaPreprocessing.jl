@@ -15,12 +15,13 @@ export PreprocessConfiguration, byte_cfg
 
 include(joinpath(@__DIR__, "core", "types.jl"))
 
-export Vocabulary, VocabularyStore,
-       CorpusStorage, PipelineMetadata,
-       PreprocessBundle, 
-       with_extras!,
-       DEFAULT_LEVELS,
-       get_token_ids, get_vocabulary, has_level
+export Vocabulary, Corpus, LevelBundle,
+        PreprocessBundle, PipelineMetadata,
+        with_extras, with_extras!,
+        DEFAULT_LEVELS, LEVEL_TO_OFFSETS_FIELD,
+        get_token_ids, get_token_ids, get_vocabulary, get_corpus,
+        get_level, has_level, add_level!,
+        validate_offsets
 
 
 #processing

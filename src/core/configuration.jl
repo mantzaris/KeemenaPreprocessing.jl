@@ -1,9 +1,4 @@
 
-
-# TODO: consider @kwdef struct PreprocessConfiguration...
-# cfg = PreprocessConfiguration()                   # defaults
-# cfg2 = PreprocessConfiguration(cfg; trim_edges=false)  # copy-with
-
 struct PreprocessConfiguration
     chunk_size                :: Int
 

@@ -22,7 +22,7 @@ function save_preprocess_bundle(bundle::PreprocessBundle,
 
     jldopen(path_abs, "w"; compress = compress) do jld2_file
         jld2_file["__bundle_version__"] = string(_BUNDLE_VERSION)
-        jld2_file["__schema_version__"] = string(bundle.pipeline_metadata.schema_version)
+        jld2_file["__schema_version__"] = string(bundle.metadata.schema_version)
         jld2_file["bundle"]             = bundle
     end
 

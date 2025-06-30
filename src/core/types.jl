@@ -54,8 +54,8 @@ end
 
 struct PreprocessBundle{IdT<:Integer,OffsetT<:Integer,ExtraT}
     levels :: Dict{Symbol,LevelBundle{IdT,OffsetT}}
-    meta   :: PipelineMetadata
-    extras :: ExtraT  # User-defined data (often NamedTuple)
+    metadata   :: PipelineMetadata
+    extras :: ExtraT  #user-defined data (eg NamedTuple)
 end
 
 
@@ -87,7 +87,7 @@ const LEVEL_TO_OFFSETS_FIELD = Dict(
 
 
 function PreprocessBundle(levels::Dict{Symbol,LevelBundle{IdT,OffsetT}};
-                          meta::PipelineMetadata = PipelineMetadata(),
+                          metadata::PipelineMetadata = PipelineMetadata(),
                           extras = nothing) where {IdT,OffsetT}
     
     # Validate offset consistency for each level
@@ -95,17 +95,17 @@ function PreprocessBundle(levels::Dict{Symbol,LevelBundle{IdT,OffsetT}};
         validate_offsets(bundle.corpus, level_name)
     end
     
-    PreprocessBundle{IdT,OffsetT,typeof(extras)}(levels, meta, extras)
+    PreprocessBundle{IdT,OffsetT,typeof(extras)}(levels, metadata, extras)
 end
 
 
 function PreprocessBundle(IdT::Type=Int32, OffsetT::Type=Int32;
-                          meta::PipelineMetadata = PipelineMetadata(),
+                          metadata::PipelineMetadata = PipelineMetadata(),
                           extras = nothing)
 
     PreprocessBundle{IdT,OffsetT,typeof(extras)}(
         Dict{Symbol,LevelBundle{IdT,OffsetT}}(),
-        meta,
+        metadata,
         extras
     )
 end
@@ -157,7 +157,7 @@ end
 function with_extras(bundle::PreprocessBundle{IdT,OffsetT}, new_extras) where {IdT,OffsetT}
     PreprocessBundle{IdT,OffsetT,typeof(new_extras)}(
         bundle.levels,  # Shared reference
-        bundle.meta,
+        bundle.metadata,
         new_extras
     )
 end
@@ -182,7 +182,7 @@ end
 function Base.show(io::IO, ::MIME"text/plain", bundle::PreprocessBundle)
     println(io, "PreprocessBundle:")
     println(io, "  Levels: ", join(keys(bundle.levels), ", "))
-    println(io, "  Schema: ", bundle.meta.schema_version)
+    println(io, "  Schema: ", bundle.metadata.schema_version)
     if bundle.extras !== nothing
         println(io, "  Extras: ", typeof(bundle.extras))
     end
