@@ -1,11 +1,21 @@
 
 
-export Vocabulary, VocabularyStore,
-       CorpusStorage, PipelineMetadata,
-       PreprocessBundle, 
-       with_extras!,
-       DEFAULT_LEVELS,
-       get_token_ids, get_vocabulary, has_level
+export Vocabulary, Corpus, LevelBundle,
+       PreprocessBundle, PipelineMetadata,
+       PreprocessConfiguration,
+       with_extras, with_extras!,
+       DEFAULT_LEVELS, LEVEL_TO_OFFSETS_FIELD,
+       get_token_ids, get_vocabulary, get_corpus,
+       get_level, has_level, add_level!,
+       validate_offsets
+       
+
+struct PipelineMetadata
+    configuration :: PreprocessConfiguration #cleaning and tokeniser params
+    schema_version:: VersionNumber
+end
+
+PipelineMetadata() = PipelineMetadata(PreprocessConfiguration(), v"1.0.0")
 
 
 struct Vocabulary{IdT<:Integer}
@@ -16,14 +26,9 @@ struct Vocabulary{IdT<:Integer}
 end
 
 
-struct VocabularyStore
-    vocabularies :: Dict{Symbol, Vocabulary{<:Integer}} # align with token_ids_by_level
-end
-
-
-struct CorpusStorage{OffsetT<:Integer}
-    token_ids_by_level :: Dict{Symbol, Vector{<:Integer}}   # :word, :char, :byte, etc
-    document_offsets   :: Vector{OffsetT}           # length = D+1, 1-based, sentinel end
+struct Corpus{IdT<:Integer, OffsetT<:Integer}
+    token_ids          :: Vector{IdT}
+    document_offsets   :: Vector{OffsetT} # length = D+1, 1-based, sentinel end
     paragraph_offsets  :: Union{Vector{OffsetT},Nothing}
     sentence_offsets   :: Union{Vector{OffsetT},Nothing}
     character_offsets  :: Union{Vector{OffsetT},Nothing}
@@ -31,21 +36,26 @@ struct CorpusStorage{OffsetT<:Integer}
 end
 
 
-struct PipelineMetadata
-    configuration :: PreprocessConfiguration #cleaning and tokeniser params
-    schema_version:: VersionNumber
+struct LevelBundle{IdT<:Integer,OffsetT<:Integer}
+    corpus     :: Corpus{IdT,OffsetT}
+    vocabulary :: Vocabulary{IdT}
+    
+    #inner constructor for validation
+    function LevelBundle(corpus::Corpus{IdT,OffsetT}, vocab::Vocabulary{IdT}) where {IdT,OffsetT}
+        #validate that all token IDs in corpus are valid for the vocabulary
+        max_id = maximum(corpus.token_ids; init=0)
+        if max_id > length(vocab.id_to_token_strings)
+            error("Corpus contains token ID $max_id but vocabulary only has $(length(vocab.id_to_token_strings)) tokens")
+        end
+        new{IdT,OffsetT}(corpus, vocab)
+    end
 end
 
-PipelineMetadata() = PipelineMetadata(PreprocessConfiguration(), v"1.0.0")
 
-
-
-struct PreprocessBundle{OffsetT<:Integer, ExtraT}
-    corpus_storage    :: CorpusStorage{OffsetT}
-    vocabulary_store  :: VocabularyStore
-    pipeline_metadata :: PipelineMetadata
-    extras            :: ExtraT
-    levels_present    :: Dict{Symbol,Bool}
+struct PreprocessBundle{IdT<:Integer,OffsetT<:Integer,ExtraT}
+    levels :: Dict{Symbol,LevelBundle{IdT,OffsetT}}
+    meta   :: PipelineMetadata
+    extras :: ExtraT  # User-defined data (often NamedTuple)
 end
 
 
@@ -76,62 +86,112 @@ const LEVEL_TO_OFFSETS_FIELD = Dict(
 )
 
 
-function PreprocessBundle(corpus_storage::CorpusStorage{OffsetT},
-                          vocabulary_store ::VocabularyStore;
-                          pipeline_metadata = PipelineMetadata(),
-                          extras            = nothing,
-                          levels_present    = DEFAULT_LEVELS) where {OffsetT}
+function PreprocessBundle(levels::Dict{Symbol,LevelBundle{IdT,OffsetT}};
+                          meta::PipelineMetadata = PipelineMetadata(),
+                          extras = nothing) where {IdT,OffsetT}
+    
+    # Validate offset consistency for each level
+    for (level_name, bundle) in levels
+        validate_offsets(bundle.corpus, level_name)
+    end
+    
+    PreprocessBundle{IdT,OffsetT,typeof(extras)}(levels, meta, extras)
+end
 
-    for (lvl, ids) in corpus_storage.token_ids_by_level
-        field = get(LEVEL_TO_OFFSETS_FIELD, lvl, nothing)
-        if field !== nothing
-            offs = getfield(corpus_storage, field)
-            @assert offs === nothing || offs[end] == length(ids) + 1
+
+function PreprocessBundle(IdT::Type=Int32, OffsetT::Type=Int32;
+                          meta::PipelineMetadata = PipelineMetadata(),
+                          extras = nothing)
+
+    PreprocessBundle{IdT,OffsetT,typeof(extras)}(
+        Dict{Symbol,LevelBundle{IdT,OffsetT}}(),
+        meta,
+        extras
+    )
+end
+
+
+function validate_offsets(corpus::Corpus, level_name::Symbol)
+    
+    field = get(LEVEL_TO_OFFSETS_FIELD, level_name, nothing)
+
+    if field !== nothing
+        offsets = getfield(corpus, field)
+    
+        if offsets !== nothing && offsets[end] != length(corpus.token_ids) + 1
+            error("Invalid offsets for level $level_name: expected $(length(corpus.token_ids) + 1), got $(offsets[end])")
         end
     end
-
-    PreprocessBundle{OffsetT,typeof(extras)}(
-        corpus_storage, vocabulary_store, pipeline_metadata, extras, copy(levels_present))
 end
 
 
-"""
-    with_extras!(bundle, new_extras; setlevel = nothing) -> new_bundle
+has_level(bundle::PreprocessBundle, level::Symbol) = haskey(bundle.levels, level)
 
-Return a **new** `PreprocessBundle` sharing the same corpus & vocab but carrying
-`new_extras`.  If `setlevel` is provided it toggles the corresponding
-`levels_present` flag to `true`.
-"""
-function with_extras!(bundle::PreprocessBundle{OffsetT,ExtraT},
-                      new_extras;
-                      setlevel::Union{Symbol,Nothing}=nothing
-                      ) where {OffsetT,ExtraT}
 
-    new_levels = copy(bundle.levels_present)
-    if setlevel !== nothing
-        new_levels[setlevel] = true
+function get_level(bundle::PreprocessBundle, level::Symbol)
+    if !has_level(bundle, level)
+        error("Level $level is not present in this bundle. Available levels: $(keys(bundle.levels))")
     end
-
-    return PreprocessBundle{OffsetT,typeof(new_extras)}(
-        bundle.corpus_storage,
-        bundle.vocabulary_store,
-        bundle.pipeline_metadata,
-        new_extras,
-        new_levels)
+    bundle.levels[level]
 end
 
 
-has_level(pb::PreprocessBundle, level::Symbol) =
-    get(pb.levels_present, level, false)
+get_corpus(bundle::PreprocessBundle, level::Symbol) = get_level(bundle, level).corpus
 
 
-get_token_ids(bundle::PreprocessBundle, level::Symbol) =
-    get(bundle.corpus_storage.token_ids_by_level, level) do
-        error("Token IDs for level $level are not stored in this bundle.")
+get_vocabulary(bundle::PreprocessBundle, level::Symbol) = get_level(bundle, level).vocabulary
+
+
+get_token_ids(bundle::PreprocessBundle, level::Symbol) = get_corpus(bundle, level).token_ids
+
+
+function add_level!(bundle::PreprocessBundle{IdT,OffsetT}, 
+                    level::Symbol, 
+                    level_bundle::LevelBundle{IdT,OffsetT}) where {IdT,OffsetT}
+    validate_offsets(level_bundle.corpus, level)
+    bundle.levels[level] = level_bundle
+    bundle
+end
+
+
+function with_extras(bundle::PreprocessBundle{IdT,OffsetT}, new_extras) where {IdT,OffsetT}
+    PreprocessBundle{IdT,OffsetT,typeof(new_extras)}(
+        bundle.levels,  # Shared reference
+        bundle.meta,
+        new_extras
+    )
+end
+
+
+with_extras!(bundle::PreprocessBundle, new_extras; kwargs...) = with_extras(bundle, new_extras)
+
+
+Base.iterate(bundle::PreprocessBundle) = iterate(bundle.levels)
+Base.iterate(bundle::PreprocessBundle, state) = iterate(bundle.levels, state)
+Base.length(bundle::PreprocessBundle) = length(bundle.levels)
+Base.keys(bundle::PreprocessBundle) = keys(bundle.levels)
+Base.values(bundle::PreprocessBundle) = values(bundle.levels)
+
+
+function Base.show(io::IO, bundle::PreprocessBundle)
+    print(io, "PreprocessBundle with $(length(bundle.levels)) level(s): ")
+    print(io, join(keys(bundle.levels), ", "))
+end
+
+
+function Base.show(io::IO, ::MIME"text/plain", bundle::PreprocessBundle)
+    println(io, "PreprocessBundle:")
+    println(io, "  Levels: ", join(keys(bundle.levels), ", "))
+    println(io, "  Schema: ", bundle.meta.schema_version)
+    if bundle.extras !== nothing
+        println(io, "  Extras: ", typeof(bundle.extras))
     end
-
-
-get_vocabulary(bundle::PreprocessBundle, level::Symbol) =
-    get(bundle.vocabulary_store.vocabularies, level) do
-        error("Vocabulary for level $level is not stored.")
+    
+    for (level, lb) in bundle.levels
+        println(io, "\n  Level :$level")
+        println(io, "    Tokens: ", length(lb.corpus.token_ids))
+        println(io, "    Vocabulary size: ", length(lb.vocabulary.id_to_token_strings))
+        println(io, "    Documents: ", length(lb.corpus.document_offsets) - 1)
     end
+end
+
