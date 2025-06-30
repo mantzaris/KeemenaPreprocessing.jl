@@ -42,7 +42,7 @@ function load_preprocess_bundle(path::AbstractString; format::Symbol = :jld2)
         if stored > _BUNDLE_VERSION
             error("Bundle version $stored is newer than library $_BUNDLE_VERSION")
         end
-        return jld2_file["bundle"]::PreprocessBundle
+        return jld2_file["bundle"]
     end
 end
 

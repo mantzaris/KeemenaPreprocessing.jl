@@ -1,14 +1,13 @@
 
-#############################
-# storage/preprocessor_state.jl
-#############################
+
 module _PreprocessorState
 
 using ..KeemenaPreprocessing:
         PreprocessBundle, Vocabulary, PreprocessConfiguration,
         preprocess_corpus, assemble_bundle,
         _load_sources, clean_documents, tokenize_and_segment,
-        save_preprocess_bundle
+        save_preprocess_bundle,
+        get_vocabulary
 
 """
     Preprocessor(cfg, vocab)
@@ -18,7 +17,7 @@ token-to-ID map.  Parameterised on `IdT` to keep ID width.
 
 Note: passing a bundle keeps its large arrays in RAM; for big corpora prefer the Preprocessor signature
 """
-struct Preprocessor{CfgT<:PreprocessConfiguration,IdT<:Unsigned}
+struct Preprocessor{CfgT<:PreprocessConfiguration,IdT<:Integer}
     cfg        :: CfgT
     vocabulary :: Vocabulary{IdT}
 end
@@ -33,8 +32,8 @@ Keyword arguments are forwarded exactly like in `preprocess_corpus`
 """
 function build_preprocessor(sources; kwargs...)
     train_bundle = preprocess_corpus(sources; kwargs...)
-    cfg   = train_bundle.pipeline_metadata.configuration 
-    vocab = train_bundle.vocabulary
+    cfg = train_bundle.pipeline_metadata.configuration 
+    vocab = get_vocabulary(train_bundle, :word)
     return Preprocessor(cfg, vocab), train_bundle
 end
 
@@ -64,7 +63,8 @@ end
 
 function encode_corpus(bundle::PreprocessBundle, new_sources; kwargs...)
     cfg  = bundle.pipeline_metadata.configuration
-    prep  = Preprocessor(cfg, bundle.vocabulary)
+    vocab = get_vocabulary(bundle, :word)
+    prep = Preprocessor(cfg, vocab)
     return encode_corpus(prep, new_sources; kwargs...)
 end
 

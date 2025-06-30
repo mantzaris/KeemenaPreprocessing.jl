@@ -3,40 +3,6 @@
 const _EOL_RE = r"\r\n|\r" # normalise to LF
 
 
-"""
-    _load_sources(src) -> Vector{String}
-
-Get string text from one or many sources into UTF-8 text with `\\n` line endings.
-
-`src` may be
-
-  - a single `AbstractString`, or
-  - any iterable of `AbstractString`s
-
-
-1. `isfile(elem)` -> read it as a file (UTF-8, line endings normalised)
-2. `isdir(elem)` -> **ignored** (skipped, produces no output)
-3. otherwise -> treated as raw text (line endings normalised)
-
-Returns: `Vector{String}` containing one entry per **kept** element, in order
-
-Errors: 
-
-- `IOError`        : file exists but cannot be opened or decoded
-- `ArgumentError`  : element is not an `AbstractString`
-
-Examples
-
-```julia
-using Glob
-
-_load_sources("doc.txt")                       # -> ["...file contents..."]
-_load_sources("inline text")                   # -> ["inline text"]
-_load_sources(["a.txt", "notes"])              # -> ["...", "notes"]
-_load_sources(Glob.glob("/home/*.txt"))        # glob iterator -> all files
-_load_sources(["/tmp", "b.txt"])               # /tmp is a dir -> skipped
-```
-"""
 function _load_sources(src)::Vector{String}
     xs = isa(src, AbstractString) ? (src,) : src # promote scalar
     docs = String[]
@@ -69,17 +35,6 @@ end
 # ----
 
 
-"""
-    stream_chunks(sources; chunk_bytes = 1<<20) → iterator
-
-Yields each source as **UTF-8**, split into at-most-`chunk_bytes` chunks
-Every chunk is a pair `(data::String, is_doc_terminal::Bool)`:
-
-* `is_doc_terminal = true`  -> this chunk ends the current document
-* `false`                  -> more chunks of the same document follow
-
-`split(txt) == r"\r\n|\r"` is still normalised to `'\n'`
-"""
 function stream_chunks(sources; chunk_bytes::Int = 1 << 20)
     files = isa(sources, AbstractString) ? (sources,) : sources
 
