@@ -33,7 +33,7 @@ struct PreprocessConfiguration
 end
 
 
-const TOKENIZERS = (:whitespace, :unicode, :byte)
+const TOKENIZERS = (:whitespace, :unicode, :byte, :char)
 
 
 function PreprocessConfiguration(;  # all kwargs are optional

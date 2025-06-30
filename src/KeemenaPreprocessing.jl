@@ -32,7 +32,7 @@ end
 export clean_documents #cleaning.jl
 export tokenize_and_segment #tokenization.jl
 export build_vocabulary #vocabulary.jl
-export assemble_bundle #assemble.jl
+export assemble_bundle, assemble_multi #assemble.jl
 
 
 include(joinpath(@__DIR__, "pipeline", "pipeline.jl"))

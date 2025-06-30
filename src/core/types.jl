@@ -22,7 +22,7 @@ end
 
 
 struct CorpusStorage{OffsetT<:Integer}
-    token_ids_by_level :: Dict{Symbol, Vector{<:Integer}}   # :word, :char, etc
+    token_ids_by_level :: Dict{Symbol, Vector{<:Integer}}   # :word, :char, :byte, etc
     document_offsets   :: Vector{OffsetT}           # length = D+1, 1-based, sentinel end
     paragraph_offsets  :: Union{Vector{OffsetT},Nothing}
     sentence_offsets   :: Union{Vector{OffsetT},Nothing}

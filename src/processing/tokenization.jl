@@ -4,6 +4,7 @@ module _Tokenization
 
 
 using Unicode
+using Base.Unicode: graphemes
 using ..KeemenaPreprocessing: PreprocessConfiguration
 
 
@@ -20,11 +21,15 @@ _unicode_tokenizer(str::AbstractString) = [ String(m.match) for m in eachmatch(_
 _byte_tokenizer(str::AbstractString) = collect(codeunits(str))   # Vector{UInt8}
 
 
+_char_tokenizer(s::AbstractString) = [ String(g) for g in graphemes(s) ]
+
+
 _select_tokenizer(tk) =
-    tk isa Function   ? tk :
-    tk === :unicode   ? _unicode_tokenizer :
+    tk isa Function    ? tk :
+    tk === :char       ? _char_tokenizer :
+    tk === :unicode    ? _unicode_tokenizer :
     tk === :whitespace ? _ws_tokenizer :
-    tk === :byte        ? _byte_tokenizer  :
+    tk === :byte       ? _byte_tokenizer  :
     error("Unknown tokenizer $(tk); should have been validated earlier")
 
 

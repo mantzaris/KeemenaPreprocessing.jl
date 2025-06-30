@@ -76,6 +76,9 @@ function assemble_bundle(tokens::AbstractVector,
     return PreprocessBundle(corpus, vstore, meta, nothing, levels)
 end
 
+
+
+
 end # module _Assemble
 
 # Re-export for pipeline use
