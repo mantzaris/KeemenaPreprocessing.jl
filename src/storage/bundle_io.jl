@@ -7,19 +7,9 @@ using JLD2
 using ..KeemenaPreprocessing: PreprocessBundle, PreprocessConfiguration
 
 
-const _BUNDLE_VERSION = v"0.1.0"
+const _BUNDLE_VERSION = v"1.0.0"
 
 
-"""
-    save_preprocess_bundle(bundle, path; format = :jld2, compress = true)
-
-Serialize `bundle::PreprocessBundle` to disk
-
-- `format`: only `:jld2` supported for now
-- `compress`: if true, JLD2 uses `compress=true` (gzip); disable for max speed
-
-Returns the absolute path written.
-"""
 function save_preprocess_bundle(bundle::PreprocessBundle,
                                 path::AbstractString;
                                 format::Symbol = :jld2,
@@ -32,6 +22,7 @@ function save_preprocess_bundle(bundle::PreprocessBundle,
 
     jldopen(path_abs, "w"; compress = compress) do jld2_file
         jld2_file["__bundle_version__"] = string(_BUNDLE_VERSION)
+        jld2_file["__schema_version__"] = string(bundle.pipeline_metadata.schema_version)
         jld2_file["bundle"]             = bundle
     end
 
@@ -39,12 +30,6 @@ function save_preprocess_bundle(bundle::PreprocessBundle,
 end
 
 
-"""
-    load_preprocess_bundle(path; format = :jld2) -> PreprocessBundle
-
-Read a bundle back from disk.  Throws `ArgumentError` if the on-disk version
-is newer than the library knows how to handle.
-"""
 function load_preprocess_bundle(path::AbstractString; format::Symbol = :jld2)
     
     path = abspath(path)
