@@ -1,7 +1,7 @@
 module _Assemble
 
 using ..KeemenaPreprocessing: PreprocessConfiguration,
-                               Vocabulary,
+                               Vocabulary, VocabularyStore,
                                CorpusStorage,
                                PipelineMetadata,
                                PreprocessBundle,
@@ -22,11 +22,16 @@ using ..KeemenaPreprocessing: PreprocessConfiguration,
 3. Build a `levels_present` map
 4. Return an immutable `PreprocessBundle` (extras = `nothing` for now)
 """
-function assemble_bundle(tokens::Vector{String},
+function assemble_bundle(tokens::AbstractVector,
                          offsets::Dict{Symbol,Vector{Int}},
                          vocab::Vocabulary{IdT},
                          cfg::PreprocessConfiguration;
-                         offset_type::Type{<:Integer}=Int) where {IdT<:Unsigned}
+                         offset_type::Type{<:Integer}=Int) where {IdT<:Integer}
+
+    level = cfg.tokenizer_name === :byte      ? :byte  :
+            cfg.tokenizer_name === :unicode   ? :word  :      # unicode tokenizer → words
+            cfg.tokenizer_name === :whitespace ? :word  :
+            :word
 
     # 0 Ensure we have an <UNK> ID for out-of-vocabulary tokens
     unk_id = get(vocab.special_tokens, :unk, nothing)
@@ -35,38 +40,40 @@ function assemble_bundle(tokens::Vector{String},
     # 1 Token -> ID, mapping unknowns to <UNK>
     token_ids = Vector{IdT}(undef, length(tokens))
     for (i, tok) in pairs(tokens)
-        token_ids[i] = get(vocab.token_to_id_map, tok, unk_id)
+        tok_str = tok isa UInt8 ? String(Char(tok)) : String(tok)
+        token_ids[i] = get(vocab.token_to_id_map, tok_str, unk_id)
     end
 
     # 2 Offset vectors (document offsets always present)
     OffsetT     = offset_type
     convert_vec = v::Vector{Int} -> OffsetT.(v)
 
-    doc_offs = haskey(offsets, :document) ?
-                 convert_vec(offsets[:document]) :
-                 OffsetT[1, length(tokens) + 1]
+    doc_offs  = haskey(offsets, :document)  ? convert_vec(offsets[:document])  : OffsetT[1, length(tokens)+1]
+    par_offs  = haskey(offsets, :paragraph) ? convert_vec(offsets[:paragraph]) : nothing
+    sen_offs  = haskey(offsets, :sentence)  ? convert_vec(offsets[:sentence])  : nothing
+    char_offs = haskey(offsets, :character) ? convert_vec(offsets[:character]) : nothing
+    byte_offs = haskey(offsets, :byte)      ? convert_vec(offsets[:byte])      : nothing
 
-    par_offs = haskey(offsets, :paragraph) ? convert_vec(offsets[:paragraph]) : nothing
-    sen_offs = haskey(offsets, :sentence)  ? convert_vec(offsets[:sentence])  : nothing
-    char_offs= haskey(offsets, :character) ? convert_vec(offsets[:character]) : nothing
-    # char_offs reserved for future support
+    token_dict = Dict(level => token_ids)
 
-    corpus = CorpusStorage{IdT,OffsetT}(token_ids, doc_offs, par_offs, sen_offs, char_offs)
+    corpus = CorpusStorage{OffsetT}(token_dict, doc_offs, par_offs, sen_offs, char_offs, byte_offs)
 
     # 3 levels_present map
+    vstore = VocabularyStore(Dict(level => vocab))
+
     levels = copy(DEFAULT_LEVELS)
-    levels[:word]      = true
-    levels[:document]  = true                # guaranteed after this layer
+    levels[level]      = true
+    levels[:document]  = true
     levels[:paragraph] = par_offs !== nothing
     levels[:sentence]  = sen_offs !== nothing
     levels[:character] = char_offs !== nothing
-    # :character remains false
+    levels[:byte]      = byte_offs !== nothing
 
     # 4 Pipeline metadata (store full configuration for provenance)
     meta = PipelineMetadata(cfg) #PipelineMetadata(Dict(:configuration => cfg))
 
     # 5 Assemble bundle (extras = nothing for v0.1)
-    return PreprocessBundle(corpus, vocab, meta, nothing, levels)
+    return PreprocessBundle(corpus, vstore, meta, nothing, levels)
 end
 
 end # module _Assemble

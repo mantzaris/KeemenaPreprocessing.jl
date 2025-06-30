@@ -16,15 +16,20 @@ const _WB_RE = r"(?<=\p{L}|\p{N})[\p{M}\p{Pc}\p{Pd}\p{Nd}\p{L}]*" #r"(?<=\\p{L}|
 _unicode_tokenizer(str::AbstractString) = [ String(m.match) for m in eachmatch(_WB_RE, str) ]
 
 
+#raw UTF-8 bytes
+_byte_tokenizer(str::AbstractString) = collect(codeunits(str))   # Vector{UInt8}
+
+
 _select_tokenizer(tk) =
     tk isa Function   ? tk :
     tk === :unicode   ? _unicode_tokenizer :
     tk === :whitespace ? _ws_tokenizer :
+    tk === :byte        ? _byte_tokenizer  :
     error("Unknown tokenizer $(tk); should have been validated earlier")
 
 
 _split_paragraphs(txt::AbstractString) = split(txt, r"\n{2,}") #split(txt, r"\\n{2,}")
-_split_sentences(txt::AbstractString)    = split(txt, r"(?<=[.!?])\s+") #split(p,  r"(?<=[.!?])\\s+")
+_split_sentences(txt::AbstractString)  = split(txt, r"(?<=[.!?])\s+") #split(p,  r"(?<=[.!?])\\s+")
 
 
 """
@@ -43,14 +48,17 @@ each offset vector follows the Julia sentinel convention:
 """
 function tokenize_and_segment(chunks, cfg::PreprocessConfiguration)
 
-    tok_fn   = _select_tokenizer(cfg.tokenizer_name)
-    tokens   = String[]
+    tok_fn     = _select_tokenizer(cfg.tokenizer_name)
+    tok_eltype = cfg.tokenizer_name === :byte ? UInt8 : String
+    tokens     = Vector{tok_eltype}()
 
     #always start each offset vector with 1 (sentinel)
-    doc_offs = cfg.record_document_offsets  ? Int[1] : Int[]
-    par_offs = cfg.record_paragraph_offsets ? Int[1] : Int[]
-    sen_offs = cfg.record_sentence_offsets  ? Int[1] : Int[]
-    char_offs = cfg.record_character_offsets ? Int[] : Int[]
+    doc_offs = cfg.record_document_offsets   ? Int[1] : Int[]
+    par_offs = cfg.record_paragraph_offsets  ? Int[1] : Int[]
+    sen_offs = cfg.record_sentence_offsets   ? Int[1] : Int[]
+    char_offs = cfg.record_character_offsets ? Int[]  : Int[]
+    byte_offs = cfg.record_byte_offsets      ? Int[]  : Int[]
+
 
     bytes_pos = 1
     
@@ -63,21 +71,25 @@ function tokenize_and_segment(chunks, cfg::PreprocessConfiguration)
 
             for sent in sentences
                 tkns = tok_fn(sent)
-                if !cfg.preserve_empty_tokens
+                if !cfg.preserve_empty_tokens && (eltype(tkns) <: AbstractString)
                     filter!(t -> !isempty(t), tkns)
                 end
 
-                #chars>>>
-                if cfg.record_character_offsets
+                #byte & chars offsetts>>>
+                if cfg.record_character_offsets || cfg.record_byte_offsets
                     for tok in tkns
-                        push!(char_offs, bytes_pos)
+                        if cfg.record_character_offsets
+                            push!(char_offs, bytes_pos)
+                        end
+                        if cfg.record_byte_offsets
+                            push!(byte_offs, bytes_pos)
+                        end
                         bytes_pos += ncodeunits(tok)
                     end
-                    
-                    bytes_pos += ncodeunits(sent) - sum(ncodeunits, tkns) # all whitespace/newlines inside `sent`
-                    # bytes_pos += !isempty(tkns) ? 1 : 0
+                    # whitespace/newlines between tokens
+                    bytes_pos += ncodeunits(sent) - sum(ncodeunits, tkns)
                 end
-                #<<<chars
+                #<<<chars & bytes
 
                 append!(tokens, tkns)
                 cfg.record_sentence_offsets && push!(sen_offs, length(tokens)+1)
@@ -91,11 +103,11 @@ function tokenize_and_segment(chunks, cfg::PreprocessConfiguration)
     end
 
     cfg.record_character_offsets && push!(char_offs, bytes_pos)
+    cfg.record_byte_offsets      && push!(byte_offs, bytes_pos)
 
-    cfg.record_sentence_offsets  && isempty(sen_offs)  == false && sen_offs[end] != length(tokens)+1 &&
-        push!(sen_offs,  length(tokens)+1)
-
-    cfg.record_paragraph_offsets && isempty(par_offs) == false && par_offs[end] != length(tokens)+1 &&
+    cfg.record_sentence_offsets  && !isempty(sen_offs) && sen_offs[end] != length(tokens)+1 &&
+        push!(sen_offs, length(tokens)+1)
+    cfg.record_paragraph_offsets && !isempty(par_offs) && par_offs[end] != length(tokens)+1 &&
         push!(par_offs, length(tokens)+1)
 
     # package result dict
@@ -105,6 +117,7 @@ function tokenize_and_segment(chunks, cfg::PreprocessConfiguration)
     cfg.record_sentence_offsets  && (offs[:sentence]  = sen_offs)
 
     cfg.record_character_offsets && (offs[:character] = char_offs)
+    cfg.record_byte_offsets      && (offs[:byte]      = byte_offs)
 
     return tokens, offs
 end
