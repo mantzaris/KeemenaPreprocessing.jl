@@ -48,14 +48,15 @@ function build_vocabulary(tokens::Vector{String};
     end
 
     # 5 add corpus tokens that meet the frequency threshold
-    for (tok, f) in freqs_dict
+    for tok in sort!(collect(keys(freqs_dict)))            # stable order
+        f = freqs_dict[tok]
         (f < cfg.minimum_token_frequency || haskey(tok_to_id, tok)) && continue
         push!(id_to_tok, tok)
         tok_to_id[tok] = id_type(length(id_to_tok))
     end
 
     # 6 aligned frequency vector (specials get zero by convention)
-    token_freqs = [get(freqs_dict, tok, 0) for tok in id_to_tok]
+    token_freqs = Int64[get(freqs_dict, tok, 0) for tok in id_to_tok]
 
     # 7 specials map: Symbol ⇒ ID (IDs are stable across reloads)
     specials_id = Dict(sym => tok_to_id[str] for (sym, str) in specials)

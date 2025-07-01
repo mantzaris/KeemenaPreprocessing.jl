@@ -57,16 +57,23 @@ function tokenize_and_segment(chunks, cfg::PreprocessConfiguration)
     tok_eltype = cfg.tokenizer_name === :byte ? UInt8 : String
     tokens     = Vector{tok_eltype}()
 
+    # sanity checks (fail to avoid confusion)
+    if cfg.record_character_offsets && cfg.tokenizer_name ≠ :char
+        error("record_character_offsets=true requires tokenizer_name = :char")
+    end
+    if cfg.record_byte_offsets && cfg.tokenizer_name ≠ :byte
+        error("record_byte_offsets=true requires tokenizer_name = :byte")
+    end
+
     #always start each offset vector with 1 (sentinel)
     doc_offs = cfg.record_document_offsets   ? Int[1] : Int[]
     par_offs = cfg.record_paragraph_offsets  ? Int[1] : Int[]
     sen_offs = cfg.record_sentence_offsets   ? Int[1] : Int[]
-    char_offs = cfg.record_character_offsets ? Int[]  : Int[]
-    byte_offs = cfg.record_byte_offsets      ? Int[]  : Int[]
+    word_offs = cfg.record_word_offsets      ? Int[1] : Int[]
+    char_offs = cfg.record_character_offsets ? Int[1] : Int[]
+    byte_offs = cfg.record_byte_offsets      ? Int[1] : Int[]
 
-
-    bytes_pos = 1
-    
+   
     for (chunk, terminal) in chunks #for doc in docs
         
         paragraphs = cfg.record_paragraph_offsets ? _split_paragraphs(chunk) : (chunk,)
@@ -76,27 +83,26 @@ function tokenize_and_segment(chunks, cfg::PreprocessConfiguration)
 
             for sent in sentences
                 tkns = tok_fn(sent)
+
                 if !cfg.preserve_empty_tokens && (eltype(tkns) <: AbstractString)
                     filter!(t -> !isempty(t), tkns)
                 end
 
-                #byte & chars offsetts>>>
-                if cfg.record_character_offsets || cfg.record_byte_offsets
-                    for tok in tkns
-                        if cfg.record_character_offsets
-                            push!(char_offs, bytes_pos)
-                        end
-                        if cfg.record_byte_offsets
-                            push!(byte_offs, bytes_pos)
-                        end
-                        bytes_pos += ncodeunits(tok)
-                    end
-                    # whitespace/newlines between tokens
-                    bytes_pos += ncodeunits(sent) - sum(ncodeunits, tkns)
-                end
-                #<<<chars & bytes
+                for tok in tkns
+                    push!(tokens, tok)
 
-                append!(tokens, tkns)
+                    nxt = length(tokens) + 1      # = index of the *next* token
+
+                    if cfg.record_word_offsets
+                        push!(word_offs, nxt)
+                    end
+                    if cfg.tokenizer_name == :char && cfg.record_character_offsets
+                        push!(char_offs, nxt)
+                    elseif cfg.tokenizer_name == :byte && cfg.record_byte_offsets
+                        push!(byte_offs, nxt)
+                    end
+                end
+
                 cfg.record_sentence_offsets && push!(sen_offs, length(tokens)+1)
             end
             cfg.record_paragraph_offsets && push!(par_offs, length(tokens)+1)
@@ -107,8 +113,11 @@ function tokenize_and_segment(chunks, cfg::PreprocessConfiguration)
         end
     end
 
-    cfg.record_character_offsets && push!(char_offs, bytes_pos)
-    cfg.record_byte_offsets      && push!(byte_offs, bytes_pos)
+    cfg.record_character_offsets && char_offs[end] != length(tokens) + 1 &&
+        push!(char_offs, length(tokens) + 1)
+
+    cfg.record_byte_offsets && byte_offs[end] != length(tokens) + 1 &&
+        push!(byte_offs, length(tokens) + 1)
 
     cfg.record_sentence_offsets  && !isempty(sen_offs) && sen_offs[end] != length(tokens)+1 &&
         push!(sen_offs, length(tokens)+1)
@@ -120,7 +129,7 @@ function tokenize_and_segment(chunks, cfg::PreprocessConfiguration)
     cfg.record_document_offsets  && (offs[:document]  = doc_offs)
     cfg.record_paragraph_offsets && (offs[:paragraph] = par_offs)
     cfg.record_sentence_offsets  && (offs[:sentence]  = sen_offs)
-
+    cfg.record_word_offsets      && (offs[:word]      = word_offs)
     cfg.record_character_offsets && (offs[:character] = char_offs)
     cfg.record_byte_offsets      && (offs[:byte]      = byte_offs)
 

@@ -32,6 +32,7 @@ struct Corpus{IdT<:Integer, OffsetT<:Integer}
     document_offsets   :: Vector{OffsetT} # length = D+1, 1-based, sentinel end
     paragraph_offsets  :: Union{Vector{OffsetT},Nothing}
     sentence_offsets   :: Union{Vector{OffsetT},Nothing}
+    word_offsets       :: Union{Vector{OffsetT},Nothing}
     character_offsets  :: Union{Vector{OffsetT},Nothing}
     byte_offsets       :: Union{Vector{OffsetT},Nothing}
 end
@@ -90,6 +91,7 @@ end
 const LEVEL_TO_OFFSETS_FIELD = Dict(
     :byte      => :byte_offsets,
     :character => :character_offsets,
+    :word      => :word_offsets,
     :sentence  => :sentence_offsets,
     :paragraph => :paragraph_offsets,
     :document  => :document_offsets
