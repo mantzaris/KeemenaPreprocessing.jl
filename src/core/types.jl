@@ -1,10 +1,11 @@
 
 
 export Vocabulary, Corpus, LevelBundle,
+       CrossMap,
        PreprocessBundle, PipelineMetadata,
        PreprocessConfiguration,
-       with_extras, with_extras!,
-       DEFAULT_LEVELS, LEVEL_TO_OFFSETS_FIELD,
+       with_extras,
+       LEVEL_TO_OFFSETS_FIELD,
        get_token_ids, get_vocabulary, get_corpus,
        get_level, has_level, add_level!,
        validate_offsets
@@ -52,29 +53,38 @@ struct LevelBundle{IdT<:Integer,OffsetT<:Integer}
 end
 
 
+struct CrossMap{IdxT<:Integer}
+    source_level :: Symbol       #eg :byte
+    destination_level :: Symbol  #eg :word
+    alignment :: Vector{IdxT}    #length = length(src_level tokens)
+end
+
+
+"""
+    CrossMap(src_level, dst_level, alignment::Vector)
+
+A thin wrapper for a mapping from a **source** tokenisation level to a
+**destination** level.  The `alignment[i]` entry gives the index of the
+destination element that *contains* source element `i`.
+
+Use the one-shot constructor if you already have the vector:
+```julia
+cm = CrossMap(:byte, :word, byte_to_word_vector)
+```
+"""
+CrossMap(src::Symbol, dst::Symbol, align::AbstractVector{<:Integer}) = CrossMap{eltype(align)}(src, dst, collect(align)) # ensures concrete Vector
+
+
 struct PreprocessBundle{IdT<:Integer,OffsetT<:Integer,ExtraT}
-    levels :: Dict{Symbol,LevelBundle{IdT,OffsetT}}
+    levels     :: Dict{Symbol,LevelBundle{IdT,OffsetT}}
     metadata   :: PipelineMetadata
-    extras :: ExtraT  #user-defined data (eg NamedTuple)
+    alignments :: Dict{Tuple{Symbol,Symbol},CrossMap{IdT}} #default = Dict()
+    extras     :: ExtraT  #user-defined data (eg NamedTuple)
 end
 
 
 ##############
 # Constructors
-
-
-const DEFAULT_LEVELS = Dict(
-    :byte => false,
-    :character => false, 
-    :word => false, 
-    :bpe => false, 
-    :wordpiece => false,
-    :unigram => false,
-    :sentence => false, 
-    :sentencepiece => false, 
-    :paragraph => false, 
-    :document => false
-)
 
 
 const LEVEL_TO_OFFSETS_FIELD = Dict(
@@ -86,28 +96,66 @@ const LEVEL_TO_OFFSETS_FIELD = Dict(
 )
 
 
-function PreprocessBundle(levels::Dict{Symbol,LevelBundle{IdT,OffsetT}};
-                          metadata::PipelineMetadata = PipelineMetadata(),
-                          extras = nothing) where {IdT,OffsetT}
-    
-    # Validate offset consistency for each level
-    for (level_name, bundle) in levels
-        validate_offsets(bundle.corpus, level_name)
+function PreprocessBundle(levels::Dict{Symbol,<:LevelBundle};
+                          metadata   ::PipelineMetadata = PipelineMetadata(),
+                          alignments ::Dict{Tuple{Symbol,Symbol},<:CrossMap} = nothing,
+                          extras                       = nothing)
+
+    isempty(levels) && error("At least one LevelBundle is required; for an empty shell, call the zero-arg constructor.")
+
+    # infer IdT & OffsetT from the first bundle 
+    first_lb  = first(values(levels))
+    IdT       = eltype(first_lb.corpus.token_ids)
+    OffsetT   = eltype(first_lb.corpus.document_offsets)
+    ExtrasT   = typeof(extras)
+
+    if alignments === nothing
+        alignments = Dict{Tuple{Symbol,Symbol},CrossMap{IdT}}()
+    else
+        alignments = Dict{Tuple{Symbol,Symbol},CrossMap{IdT}}(alignments)
     end
-    
-    PreprocessBundle{IdT,OffsetT,typeof(extras)}(levels, metadata, extras)
+
+    # validate
+    for (lvl, lb) in levels
+        validate_offsets(lb.corpus, lvl)
+        @assert eltype(lb.corpus.token_ids)        === IdT
+        @assert eltype(lb.corpus.document_offsets) === OffsetT
+    end
+
+    # validate alignments
+    for ((src, dst), cm) in alignments
+        #check that both source and destination levels exist
+        haskey(levels, src) || error("Alignment source level :$src not found in bundle")
+        haskey(levels, dst) || error("Alignment destination level :$dst not found in bundle")
+        
+        #check alignment length matches source
+        n_src = length(levels[src].corpus.token_ids)
+        length(cm.alignment) == n_src || error("Alignment $src→$dst length $(length(cm.alignment)) doesn't match source token count $n_src")
+        
+        #check CrossMap metadata consistency
+        cm.source_level == src || error("CrossMap source_level $(cm.source_level) doesn't match key $src")
+        cm.destination_level == dst || error("CrossMap destination_level $(cm.destination_level) doesn't match key $dst")
+    end
+
+    return PreprocessBundle{IdT,OffsetT,ExtrasT}(
+        Dict(levels),          # own copy
+        metadata,
+        Dict(alignments),      # own copy
+        extras,
+    )
 end
 
 
-function PreprocessBundle(IdT::Type=Int32, OffsetT::Type=Int32;
-                          metadata::PipelineMetadata = PipelineMetadata(),
-                          extras = nothing)
+function PreprocessBundle(; id_type::Type{<:Integer}=Int,
+                           offset_type::Type{<:Integer}=Int,
+                           metadata::PipelineMetadata = PipelineMetadata(),
+                           extras = nothing)
 
-    PreprocessBundle{IdT,OffsetT,typeof(extras)}(
-        Dict{Symbol,LevelBundle{IdT,OffsetT}}(),
-        metadata,
-        extras
-    )
+    levels     = Dict{Symbol,LevelBundle{id_type,offset_type}}()
+    alignments = Dict{Tuple{Symbol,Symbol},CrossMap{id_type}}()
+    return PreprocessBundle{ id_type,
+                             offset_type,
+                             typeof(extras) }(levels, metadata, alignments, extras)
 end
 
 
@@ -154,16 +202,12 @@ function add_level!(bundle::PreprocessBundle{IdT,OffsetT},
 end
 
 
-function with_extras(bundle::PreprocessBundle{IdT,OffsetT}, new_extras) where {IdT,OffsetT}
-    PreprocessBundle{IdT,OffsetT,typeof(new_extras)}(
-        bundle.levels,  # Shared reference
-        bundle.metadata,
-        new_extras
-    )
+function with_extras(original::PreprocessBundle, new_extras)
+    PreprocessBundle(original.levels;
+                     metadata   = original.metadata,
+                     alignments = original.alignments,
+                     extras     = new_extras)
 end
-
-
-with_extras!(bundle::PreprocessBundle, new_extras; kwargs...) = with_extras(bundle, new_extras)
 
 
 Base.iterate(bundle::PreprocessBundle) = iterate(bundle.levels)
@@ -171,6 +215,13 @@ Base.iterate(bundle::PreprocessBundle, state) = iterate(bundle.levels, state)
 Base.length(bundle::PreprocessBundle) = length(bundle.levels)
 Base.keys(bundle::PreprocessBundle) = keys(bundle.levels)
 Base.values(bundle::PreprocessBundle) = values(bundle.levels)
+
+
+Base.length(cm::CrossMap)      = length(cm.alignment)
+Base.getindex(cm::CrossMap, i) = cm.alignment[i]
+Base.show(io::IO, cm::CrossMap) =
+    print(io, "CrossMap ", cm.source_level, "→", cm.destination_level,
+               " (", length(cm), " entries)")
 
 
 function Base.show(io::IO, bundle::PreprocessBundle)
