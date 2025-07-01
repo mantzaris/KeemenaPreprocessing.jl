@@ -1,11 +1,11 @@
+
+
 module _Assemble
 
-using ..KeemenaPreprocessing: PreprocessConfiguration,
-                               Vocabulary, VocabularyStore,
-                               CorpusStorage,
-                               PipelineMetadata,
-                               PreprocessBundle,
-                               DEFAULT_LEVELS
+
+using ..KeemenaPreprocessing:  PreprocessConfiguration,
+                               Vocabulary, Corpus, LevelBundle,
+                               PipelineMetadata, PreprocessBundle
 
 """
     assemble_bundle(tokens, offsets, vocab, cfg; offset_type = Int) -> PreprocessBundle
@@ -54,32 +54,21 @@ function assemble_bundle(tokens::AbstractVector,
     char_offs = haskey(offsets, :character) ? convert_vec(offsets[:character]) : nothing
     byte_offs = haskey(offsets, :byte)      ? convert_vec(offsets[:byte])      : nothing
 
-    token_dict = Dict(level => token_ids)
+    corpus = Corpus{IdT,OffsetT}(token_ids, doc_offs, par_offs,
+                                 sen_offs, char_offs, byte_offs)
 
-    corpus = CorpusStorage{OffsetT}(token_dict, doc_offs, par_offs, sen_offs, char_offs, byte_offs)
+    lb     = LevelBundle(corpus, vocab)
+    lvls   = Dict(level => lb)                 # present levels only
 
-    # 3 levels_present map
-    vstore = VocabularyStore(Dict(level => vocab))
+    meta   = PipelineMetadata(cfg)             # provenance
 
-    levels = copy(DEFAULT_LEVELS)
-    levels[level]      = true
-    levels[:document]  = true
-    levels[:paragraph] = par_offs !== nothing
-    levels[:sentence]  = sen_offs !== nothing
-    levels[:character] = char_offs !== nothing
-    levels[:byte]      = byte_offs !== nothing
+    return PreprocessBundle(lvls; metadata = meta, extras = nothing)
 
-    # 4 Pipeline metadata (store full configuration for provenance)
-    meta = PipelineMetadata(cfg) #PipelineMetadata(Dict(:configuration => cfg))
-
-    # 5 Assemble bundle (extras = nothing for v0.1)
-    return PreprocessBundle(corpus, vstore, meta, nothing, levels)
 end
 
 
-
-
 end # module _Assemble
+
 
 # Re-export for pipeline use
 import ._Assemble: assemble_bundle

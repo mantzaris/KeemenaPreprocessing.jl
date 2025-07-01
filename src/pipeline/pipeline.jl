@@ -1,7 +1,7 @@
 
 
 function preprocess_corpus(sources; 
-                            id_type::Type{<:Integer}=UInt32,
+                            id_type::Type{<:Integer}=Int,
                             offset_type::Type{<:Integer}=Int,
                             save_to::Union{Nothing,String}=nothing,
                             config::Union{Nothing,PreprocessConfiguration}=nothing,
@@ -18,7 +18,7 @@ end
 
 
 function preprocess_corpus(sources, cfg::PreprocessConfiguration;
-                            id_type::Type{<:Integer}       = UInt32,
+                            id_type::Type{<:Integer}       = Int,
                             offset_type::Type{<:Integer}   = Int,
                             save_to::Union{Nothing,String} = nothing)
 
@@ -27,34 +27,35 @@ end
 
 
 function preprocess_corpus_streaming(srcs;
-                                     cfg = PreprocessConfiguration(),
-                                     id_type::Type{<:Integer}=UInt32,
-                                     offset_type::Type{<:Integer}=Int)
+                                     cfg   ::PreprocessConfiguration = PreprocessConfiguration(),
+                                     vocab ::Union{Nothing,Vocabulary} = nothing,
+                                     id_type  ::Type{<:Integer} = Int,
+                                     offset_type::Type{<:Integer} = Int)
 
-    raw_chunks = doc_chunk_iterator(srcs, cfg)
+    # Pass 1 - optional full-corpus vocab
+    if vocab === nothing
+        all_docs            = collect(_load_sources(srcs))
+        clean_docs          = clean_documents(all_docs, cfg)
+        all_tokens, _       = tokenize_and_segment(clean_docs, cfg)
+        vocab               = build_vocabulary(all_tokens; cfg=cfg, id_type=id_type)
+    end
+
+    raw_chunks = doc_chunk_iterator(srcs, cfg)  # Pass 2 - streaming
 
     return Channel{PreprocessBundle}(Inf) do ch
-        vocab  = nothing
-        first  = true
         for docs in raw_chunks
             clean_docs        = clean_documents(docs, cfg)
             tokens, offs      = tokenize_and_segment(clean_docs, cfg)
-
-            if first
-                vocab = build_vocabulary(tokens; cfg=cfg, id_type=id_type)
-                first = false
-            end
-
-            bundle = assemble_bundle(tokens, offs, vocab, cfg; offset_type)
+            bundle            = assemble_bundle(tokens, offs, vocab, cfg; offset_type)
             put!(ch, bundle)
         end
     end
-end
+ end
 
 
 function _preprocess_core(sources,
                           cfg::PreprocessConfiguration;
-                          id_type::Type{<:Integer}=UInt32,
+                          id_type::Type{<:Integer}=Int,
                           offset_type::Type{<:Integer}=Int,
                           save_to::Union{Nothing,String}=nothing)
 

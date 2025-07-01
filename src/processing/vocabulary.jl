@@ -1,4 +1,19 @@
 
+    # TODO: 1 - paragraph / document boundary markers
+
+    # Example:
+    # if cfg.record_paragraph_offsets
+    #     specials[:pbos] = get(specials, :pbos, "<PBOS>")
+    #     specials[:peos] = get(specials, :peos, "<PEOS>")
+    # end
+    #
+    # Uncomment / extend when you have a model that requires them
+
+    # TODO: 2 - sub-word or language-specific specials
+    # If later you support BPE/SentencePiece in `extras`,
+    # inject <BPE_UNK>, <SP_ACRONYM>, etc. here based on cfg flags
+
+    # 4 assign IDs  (specials first, deterministic alphabetical order)
 
 module _Vocabulary
 
@@ -23,21 +38,6 @@ function build_vocabulary(tokens::Vector{String};
         specials[:eos] = get(specials, :eos, "<EOS>")
     end
 
-    # TODO: 1 - paragraph / document boundary markers
-
-    # Example:
-    # if cfg.record_paragraph_offsets
-    #     specials[:pbos] = get(specials, :pbos, "<PBOS>")
-    #     specials[:peos] = get(specials, :peos, "<PEOS>")
-    # end
-    #
-    # Uncomment / extend when you have a model that requires them
-
-    # TODO: 2 - sub-word or language-specific specials
-    # If later you support BPE/SentencePiece in `extras`,
-    # inject <BPE_UNK>, <SP_ACRONYM>, etc. here based on cfg flags
-
-    # 4 assign IDs  (specials first, deterministic alphabetical order)
     id_to_tok = String[]
     tok_to_id = Dict{String,id_type}()
 
