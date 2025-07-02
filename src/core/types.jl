@@ -79,7 +79,7 @@ CrossMap(src::Symbol, dst::Symbol, align::AbstractVector{<:Integer}) = CrossMap{
 struct PreprocessBundle{IdT<:Integer,OffsetT<:Integer,ExtraT}
     levels     :: Dict{Symbol,LevelBundle{IdT,OffsetT}}
     metadata   :: PipelineMetadata
-    alignments :: Dict{Tuple{Symbol,Symbol},CrossMap{IdT}} #default = Dict()
+    alignments :: Dict{Tuple{Symbol,Symbol},CrossMap{OffsetT}} #default = Dict()
     extras     :: ExtraT  #user-defined data (eg NamedTuple)
 end
 
@@ -112,9 +112,9 @@ function PreprocessBundle(levels::Dict{Symbol,<:LevelBundle};
     ExtrasT   = typeof(extras)
 
     if alignments === nothing
-        alignments = Dict{Tuple{Symbol,Symbol},CrossMap{IdT}}()
+        alignments = Dict{Tuple{Symbol,Symbol},CrossMap{OffsetT}}()
     else
-        alignments = Dict{Tuple{Symbol,Symbol},CrossMap{IdT}}(alignments)
+        alignments = Dict{Tuple{Symbol,Symbol},CrossMap{OffsetT}}(alignments)
     end
 
     # validate
@@ -154,7 +154,7 @@ function PreprocessBundle(; id_type::Type{<:Integer}=Int,
                            extras = nothing)
 
     levels     = Dict{Symbol,LevelBundle{id_type,offset_type}}()
-    alignments = Dict{Tuple{Symbol,Symbol},CrossMap{id_type}}()
+    alignments = Dict{Tuple{Symbol,Symbol},CrossMap{offset_type}}()
     return PreprocessBundle{ id_type,
                              offset_type,
                              typeof(extras) }(levels, metadata, alignments, extras)

@@ -119,8 +119,12 @@ function tokenize_and_segment(chunks, cfg::PreprocessConfiguration)
     cfg.record_byte_offsets && byte_offs[end] != length(tokens) + 1 &&
         push!(byte_offs, length(tokens) + 1)
 
+    cfg.record_word_offsets && word_offs[end] != length(tokens)+1 &&
+        push!(word_offs, length(tokens)+1)
+
     cfg.record_sentence_offsets  && !isempty(sen_offs) && sen_offs[end] != length(tokens)+1 &&
         push!(sen_offs, length(tokens)+1)
+        
     cfg.record_paragraph_offsets && !isempty(par_offs) && par_offs[end] != length(tokens)+1 &&
         push!(par_offs, length(tokens)+1)
 

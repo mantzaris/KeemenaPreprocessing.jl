@@ -26,7 +26,7 @@ export Vocabulary, Corpus, LevelBundle,
 
 #processing
 for f in ("cleaning.jl","tokenization.jl",
-          "vocabulary.jl","assemble.jl")
+          "vocabulary.jl","assemble.jl","alignment.jl")
     include(joinpath("processing", f))
 end
 
@@ -34,6 +34,7 @@ export clean_documents #cleaning.jl
 export tokenize_and_segment #tokenization.jl
 export build_vocabulary #vocabulary.jl
 export assemble_bundle, assemble_multi #assemble.jl
+export alignment_byte_to_word, alignment_char_to_word, alignment_byte_to_char #alignment
 
 
 include(joinpath(@__DIR__, "pipeline", "pipeline.jl"))
