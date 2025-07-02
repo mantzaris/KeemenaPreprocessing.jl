@@ -58,7 +58,6 @@ function alignment_char_to_word(char_c::Corpus{<:Integer,OffsetT},
 end
 
 
-
 function alignment_byte_to_char(c::Corpus{<:Integer,OffsetT})::CrossMap{OffsetT} where {OffsetT}
     bo = _require_offsets(:byte,      c.byte_offsets)
     co = _require_offsets(:character, c.character_offsets)

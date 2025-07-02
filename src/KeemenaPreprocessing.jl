@@ -17,9 +17,9 @@ include(joinpath(@__DIR__, "core", "types.jl"))
 
 export Vocabulary, Corpus, LevelBundle,
         PreprocessBundle, PipelineMetadata,
-        with_extras, with_extras!,
-        DEFAULT_LEVELS, LEVEL_TO_OFFSETS_FIELD,
-        get_token_ids, get_token_ids, get_vocabulary, get_corpus,
+        with_extras,
+        LEVEL_TO_OFFSETS_FIELD,
+        get_token_ids, get_vocabulary, get_corpus,
         get_level, has_level, add_level!,
         validate_offsets
 
@@ -51,9 +51,7 @@ export stream_chunks #raw_readers.jl
 export Preprocessor, encode_corpus, build_preprocessor #preprocessor_state.jl
 
 export fit_preprocessor,         # returns a reusable preprocessor
-       transform_with_preprocessor,
-       save_preprocess_bundle,
-       load_preprocess_bundle
+       transform_with_preprocessor
 
 
 export save_preprocess_bundle, load_preprocess_bundle
