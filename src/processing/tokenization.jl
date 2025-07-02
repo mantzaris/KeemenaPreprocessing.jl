@@ -58,10 +58,10 @@ function tokenize_and_segment(chunks, cfg::PreprocessConfiguration)
     tokens     = Vector{tok_eltype}()
 
     # sanity checks (fail to avoid confusion)
-    if cfg.record_character_offsets && cfg.tokenizer_name ≠ :char
+    if cfg.record_character_offsets && cfg.tokenizer_name != :char
         error("record_character_offsets=true requires tokenizer_name = :char")
     end
-    if cfg.record_byte_offsets && cfg.tokenizer_name ≠ :byte
+    if cfg.record_byte_offsets && cfg.tokenizer_name != :byte
         error("record_byte_offsets=true requires tokenizer_name = :byte")
     end
 
