@@ -1,16 +1,5 @@
 
 
-export Vocabulary, Corpus, LevelBundle,
-       CrossMap,
-       PreprocessBundle, PipelineMetadata,
-       PreprocessConfiguration,
-       with_extras,
-       LEVEL_TO_OFFSETS_FIELD,
-       get_token_ids, get_vocabulary, get_corpus,
-       get_level, has_level, add_level!,
-       validate_offsets
-       
-
 struct PipelineMetadata
     configuration :: PreprocessConfiguration #cleaning and tokeniser params
     schema_version:: VersionNumber
@@ -19,68 +8,66 @@ end
 PipelineMetadata() = PipelineMetadata(PreprocessConfiguration(), v"1.0.0")
 
 
-struct Vocabulary{IdT<:Integer}
-    id_to_token_strings  :: Vector{String}
-    token_to_id_map      :: Dict{String,IdT}
-    token_frequencies    :: Vector{Int64}
-    special_tokens       :: Dict{Symbol,IdT}
+struct Vocabulary
+    id_to_token_strings :: Vector{String}
+    token_to_id_map     :: Dict{String,Int}
+    token_frequencies   :: Vector{Int}
+    special_tokens      :: Dict{Symbol,Int}
 end
 
 
-struct Corpus{IdT<:Integer, OffsetT<:Integer}
-    token_ids          :: Vector{IdT}
-    document_offsets   :: Vector{OffsetT} # length = D+1, 1-based, sentinel end
-    paragraph_offsets  :: Union{Vector{OffsetT},Nothing}
-    sentence_offsets   :: Union{Vector{OffsetT},Nothing}
-    word_offsets       :: Union{Vector{OffsetT},Nothing}
-    character_offsets  :: Union{Vector{OffsetT},Nothing}
-    byte_offsets       :: Union{Vector{OffsetT},Nothing}
+struct Corpus
+    token_ids          :: Vector{Int}
+    document_offsets   :: Vector{Int}
+    paragraph_offsets  :: Union{Vector{Int},Nothing}
+    sentence_offsets   :: Union{Vector{Int},Nothing}
+    word_offsets       :: Union{Vector{Int},Nothing}
+    character_offsets  :: Union{Vector{Int},Nothing}
+    byte_offsets       :: Union{Vector{Int},Nothing}
 end
 
 
-struct LevelBundle{IdT<:Integer,OffsetT<:Integer}
-    corpus     :: Corpus{IdT,OffsetT}
-    vocabulary :: Vocabulary{IdT}
+struct LevelBundle
+    corpus     :: Corpus
+    vocabulary :: Vocabulary
     
     #inner constructor for validation
-    function LevelBundle(corpus::Corpus{IdT,OffsetT}, vocab::Vocabulary{IdT}) where {IdT,OffsetT}
-        #validate that all token IDs in corpus are valid for the vocabulary
-        max_id = maximum(corpus.token_ids; init=0)
-        if max_id > length(vocab.id_to_token_strings)
-            error("Corpus contains token ID $max_id but vocabulary only has $(length(vocab.id_to_token_strings)) tokens")
+    function LevelBundle(corp::Corpus, vocab::Vocabulary)
+        if !isempty(corp.token_ids)
+            max_id = maximum(corp.token_ids)
+            max_id > length(vocab.id_to_token_strings) &&
+                error("Corpus contains token ID $max_id but vocabulary has only $(length(vocab.id_to_token_strings)) tokens")
+            minimum(corp.token_ids) < 1 &&
+                error("Token IDs must be ≥ 1")
         end
-        new{IdT,OffsetT}(corpus, vocab)
+        new(corp, vocab)
     end
 end
 
 
-struct CrossMap{IdxT<:Integer}
-    source_level :: Symbol       #eg :byte
-    destination_level :: Symbol  #eg :word
-    alignment :: Vector{IdxT}    #length = length(src_level tokens)
+struct CrossMap
+    source_level      :: Symbol
+    destination_level :: Symbol
+    alignment         :: Vector{Int}
 end
 
 
-"""
-    CrossMap(src_level, dst_level, alignment::Vector)
+function CrossMap(src::Symbol,
+                  dst::Symbol,
+                  align::AbstractVector{<:Integer})
 
-A thin wrapper for a mapping from a **source** tokenisation level to a
-**destination** level.  The `alignment[i]` entry gives the index of the
-destination element that *contains* source element `i`.
+    vec = align isa Vector{Int} ? align : Vector{Int}(align) # 1 time copy and convert
 
-Use the one-shot constructor if you already have the vector:
-```julia
-cm = CrossMap(:byte, :word, byte_to_word_vector)
-```
-"""
-CrossMap(src::Symbol, dst::Symbol, align::AbstractVector{<:Integer}) = CrossMap{eltype(align)}(src, dst, collect(align)) # ensures concrete Vector
+    # call the automatically generated constructor for (Symbol, Symbol, Vector{Int})
+    return Base.@invoke CrossMap(::Symbol, ::Symbol, ::Vector{Int})(src, dst, vec)
+end
 
 
-struct PreprocessBundle{IdT<:Integer,OffsetT<:Integer,ExtraT}
-    levels     :: Dict{Symbol,LevelBundle{IdT,OffsetT}}
+struct PreprocessBundle{ExtraT}
+    levels     :: Dict{Symbol,LevelBundle}
     metadata   :: PipelineMetadata
-    alignments :: Dict{Tuple{Symbol,Symbol},CrossMap{OffsetT}} #default = Dict()
-    extras     :: ExtraT  #user-defined data (eg NamedTuple)
+    alignments :: Dict{Tuple{Symbol,Symbol},CrossMap}
+    extras     :: ExtraT
 end
 
 
@@ -99,79 +86,58 @@ const LEVEL_TO_OFFSETS_FIELD = Dict(
 
 
 function PreprocessBundle(levels::Dict{Symbol,<:LevelBundle};
-                          metadata   ::PipelineMetadata = PipelineMetadata(),
-                          alignments ::Dict{Tuple{Symbol,Symbol},<:CrossMap} = nothing,
-                          extras                       = nothing)
+                          metadata   :: PipelineMetadata = PipelineMetadata(),
+                          alignments :: Dict{Tuple{Symbol,Symbol},<:CrossMap} = Dict{Tuple{Symbol,Symbol},CrossMap}(),
+                          extras = nothing)
 
-    isempty(levels) && error("At least one LevelBundle is required; for an empty shell, call the zero-arg constructor.")
+    isempty(levels) && error("At least one LevelBundle is required")
 
-    # infer IdT & OffsetT from the first bundle 
-    first_lb  = first(values(levels))
-    IdT       = eltype(first_lb.corpus.token_ids)
-    OffsetT   = eltype(first_lb.corpus.document_offsets)
-    ExtrasT   = typeof(extras)
-
-    if alignments === nothing
-        alignments = Dict{Tuple{Symbol,Symbol},CrossMap{OffsetT}}()
-    else
-        alignments = Dict{Tuple{Symbol,Symbol},CrossMap{OffsetT}}(alignments)
-    end
-
-    # validate
+    # level-wise validation
     for (lvl, lb) in levels
         validate_offsets(lb.corpus, lvl)
-        @assert eltype(lb.corpus.token_ids)        === IdT
-        @assert eltype(lb.corpus.document_offsets) === OffsetT
     end
 
-    # validate alignments
-    for ((src, dst), cm) in alignments
-        #check that both source and destination levels exist
-        haskey(levels, src) || error("Alignment source level :$src not found in bundle")
-        haskey(levels, dst) || error("Alignment destination level :$dst not found in bundle")
-        
-        #check alignment length matches source
-        n_src = length(levels[src].corpus.token_ids)
-        length(cm.alignment) == n_src || error("Alignment $src→$dst length $(length(cm.alignment)) doesn't match source token count $n_src")
-        
-        #check CrossMap metadata consistency
-        cm.source_level == src || error("CrossMap source_level $(cm.source_level) doesn't match key $src")
-        cm.destination_level == dst || error("CrossMap destination_level $(cm.destination_level) doesn't match key $dst")
+    # alignment validation
+    for ((src,dst), cm) in alignments
+        haskey(levels, src) || error("Alignment source :$src not found")
+        haskey(levels, dst) || error("Alignment destination :$dst not found")
+        length(cm.alignment) == length(levels[src].corpus.token_ids) ||
+            error("Alignment $src→$dst length mismatch")
+        cm.source_level == src || error("CrossMap source_level mismatch")
+        cm.destination_level == dst || error("CrossMap destination_level mismatch")
     end
 
-    return PreprocessBundle{IdT,OffsetT,ExtrasT}(
-        Dict(levels),          # own copy
-        metadata,
-        Dict(alignments),      # own copy
-        extras,
+    PreprocessBundle{typeof(extras)}(
+        Dict(levels), metadata, Dict(alignments), extras
     )
 end
 
 
-function PreprocessBundle(; id_type::Type{<:Integer}=Int,
-                           offset_type::Type{<:Integer}=Int,
-                           metadata::PipelineMetadata = PipelineMetadata(),
-                           extras = nothing)
-
-    levels     = Dict{Symbol,LevelBundle{id_type,offset_type}}()
-    alignments = Dict{Tuple{Symbol,Symbol},CrossMap{offset_type}}()
-    return PreprocessBundle{ id_type,
-                             offset_type,
-                             typeof(extras) }(levels, metadata, alignments, extras)
-end
+PreprocessBundle(; metadata = PipelineMetadata(), extras = nothing) =
+    PreprocessBundle{typeof(extras)}(Dict(), metadata, Dict{Tuple{Symbol,Symbol},CrossMap}(), extras)
 
 
 function validate_offsets(corpus::Corpus, level_name::Symbol)
-    
-    field = get(LEVEL_TO_OFFSETS_FIELD, level_name, nothing)
+    # Skip strict checks for aggregate levels that do not satisfy
+    # 1-token-per-offset invariants
+    level_name === :document && return
 
-    if field !== nothing
-        offsets = getfield(corpus, field)
-    
-        if offsets !== nothing && offsets[end] != length(corpus.token_ids) + 1
-            error("Invalid offsets for level $level_name: expected $(length(corpus.token_ids) + 1), got $(offsets[end])")
-        end
-    end
+    field = get(LEVEL_TO_OFFSETS_FIELD, level_name, nothing)
+    field === nothing && return                    # level has no dedicated offsets field
+
+    offsets = getfield(corpus, field)
+    offsets === nothing && return                  # offsets not recorded for this level
+
+    expected_len = length(corpus.token_ids) + 1    # one entry per token + sentinel
+
+    length(offsets) == expected_len ||
+        error("Offsets for level $level_name must have length $expected_len, got $(length(offsets))")
+
+    offsets[end] == expected_len ||
+        error("Offsets sentinel should be $expected_len, got $(offsets[end])")
+
+    issorted(offsets, lt = <) ||                   # strict increase
+        error("Offsets for level $level_name must be strictly increasing")
 end
 
 
@@ -195,12 +161,11 @@ get_vocabulary(bundle::PreprocessBundle, level::Symbol) = get_level(bundle, leve
 get_token_ids(bundle::PreprocessBundle, level::Symbol) = get_corpus(bundle, level).token_ids
 
 
-function add_level!(bundle::PreprocessBundle{IdT,OffsetT}, 
-                    level::Symbol, 
-                    level_bundle::LevelBundle{IdT,OffsetT}) where {IdT,OffsetT}
-    validate_offsets(level_bundle.corpus, level)
-    bundle.levels[level] = level_bundle
-    bundle
+function add_level!(bundle::PreprocessBundle, level::Symbol, lb::LevelBundle)
+    haskey(bundle.levels, level) && error("Level :$level already exists")
+    validate_offsets(lb.corpus, level)
+    bundle.levels[level] = lb
+    return bundle
 end
 
 
