@@ -44,7 +44,7 @@ function PreprocessConfiguration(;  # all kwargs are optional
         preserve_empty_tokens     = false,
 
         minimum_token_frequency   = 1,
-        special_tokens            = Dict(:unk => "<UNK>", :pad => "<PAD>"),
+        special_tokens            = Dict(:unk => "<UNK>", :pad => "<PAD>"), #TODO: expand!!!
 
         record_byte_offsets      = false,
         record_character_offsets = false,

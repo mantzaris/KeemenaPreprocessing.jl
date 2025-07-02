@@ -24,8 +24,7 @@ using ..KeemenaPreprocessing:  PreprocessConfiguration,
 
 
 function build_vocabulary(tokens::Vector{String};
-                          cfg::PreprocessConfiguration,
-                          id_type::Type{<:Integer}=UInt32)
+                          cfg::PreprocessConfiguration)
 
     # 1 token -> frequency
     freqs_dict = countmap(tokens)                     # Dict{String,Int}
@@ -40,12 +39,12 @@ function build_vocabulary(tokens::Vector{String};
     end
 
     id_to_tok = String[]
-    tok_to_id = Dict{String,id_type}()
+    tok_to_id = Dict{String,Int}()
 
     for sym in sort!(collect(keys(specials)))
         tok = specials[sym]
         push!(id_to_tok, tok)
-        tok_to_id[tok] = id_type(length(id_to_tok))
+        tok_to_id[tok] = length(id_to_tok)
     end
 
     # 5 add corpus tokens that meet the frequency threshold
@@ -53,7 +52,7 @@ function build_vocabulary(tokens::Vector{String};
         f = freqs_dict[tok]
         (f < cfg.minimum_token_frequency || haskey(tok_to_id, tok)) && continue
         push!(id_to_tok, tok)
-        tok_to_id[tok] = id_type(length(id_to_tok))
+        tok_to_id[tok] = length(id_to_tok)
     end
 
     # 6 aligned frequency vector (specials get zero by convention)
@@ -66,17 +65,11 @@ function build_vocabulary(tokens::Vector{String};
 end
 
 
-"""
-    build_vocabulary(byte_tokens::Vector{UInt8}; cfg, id_type = UInt32)
-
-Builds a 256-entry vocabulary (0-255) plus any special tokens
-"""
 function build_vocabulary(tokens::Vector{UInt8};
-                          cfg::PreprocessConfiguration,
-                          id_type::Type{<:Integer}=UInt32)
+                          cfg::PreprocessConfiguration)
 
     str_tokens = String.(Char.(tokens))          # one-byte strings
-    return build_vocabulary(str_tokens; cfg, id_type)
+    return build_vocabulary(str_tokens; cfg = cfg)
 end
 
 

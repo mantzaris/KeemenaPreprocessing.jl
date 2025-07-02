@@ -1,8 +1,6 @@
 
 
-function preprocess_corpus(sources; 
-                            id_type::Type{<:Integer}=Int,
-                            offset_type::Type{<:Integer}=Int,
+function preprocess_corpus(sources;
                             save_to::Union{Nothing,String}=nothing,
                             config::Union{Nothing,PreprocessConfiguration}=nothing,
                             kwargs...) #remaining keywords
@@ -13,31 +11,27 @@ function preprocess_corpus(sources;
     
     cfg = config === nothing ? PreprocessConfiguration(; kwargs...) : config
     
-    return _preprocess_core(sources, cfg; id_type, offset_type, save_to)
+    return _preprocess_core(sources, cfg; save_to)
 end
 
 
 function preprocess_corpus(sources, cfg::PreprocessConfiguration;
-                            id_type::Type{<:Integer}       = Int,
-                            offset_type::Type{<:Integer}   = Int,
                             save_to::Union{Nothing,String} = nothing)
 
-    return _preprocess_core(sources, cfg; id_type, offset_type, save_to)
+    return _preprocess_core(sources, cfg; save_to)
 end
 
 
 function preprocess_corpus_streaming(srcs;
                                      cfg   ::PreprocessConfiguration = PreprocessConfiguration(),
-                                     vocab ::Union{Nothing,Vocabulary} = nothing,
-                                     id_type  ::Type{<:Integer} = Int,
-                                     offset_type::Type{<:Integer} = Int)
+                                     vocab ::Union{Nothing,Vocabulary} = nothing)
 
     # Pass 1 - optional full-corpus vocab
     if vocab === nothing
         all_docs            = collect(_load_sources(srcs))
         clean_docs          = clean_documents(all_docs, cfg)
         all_tokens, _       = tokenize_and_segment(clean_docs, cfg)
-        vocab               = build_vocabulary(all_tokens; cfg=cfg, id_type=id_type)
+        vocab               = build_vocabulary(all_tokens; cfg=cfg)
     end
 
     raw_chunks = doc_chunk_iterator(srcs, cfg)  # Pass 2 - streaming
@@ -46,7 +40,7 @@ function preprocess_corpus_streaming(srcs;
         for docs in raw_chunks
             clean_docs        = clean_documents(docs, cfg)
             tokens, offs      = tokenize_and_segment(clean_docs, cfg)
-            bundle            = assemble_bundle(tokens, offs, vocab, cfg; offset_type)
+            bundle            = assemble_bundle(tokens, offs, vocab, cfg)
             build_alignments!(bundle)
             put!(ch, bundle)
         end
@@ -56,8 +50,6 @@ function preprocess_corpus_streaming(srcs;
 
 function _preprocess_core(sources,
                           cfg::PreprocessConfiguration;
-                          id_type::Type{<:Integer}=Int,
-                          offset_type::Type{<:Integer}=Int,
                           save_to::Union{Nothing,String}=nothing)
 
     # 1 load & clean
@@ -68,8 +60,8 @@ function _preprocess_core(sources,
     tokens,offs   = tokenize_and_segment(clean_docs, cfg)
 
     # 3 vocab + bundle
-    vocab         = build_vocabulary(tokens; cfg=cfg, id_type=id_type)
-    bundle        = assemble_bundle(tokens, offs, vocab, cfg; offset_type)
+    vocab         = build_vocabulary(tokens; cfg=cfg)
+    bundle        = assemble_bundle(tokens, offs, vocab, cfg)
     build_alignments!(bundle)
 
     save_to !== nothing && save_preprocess_bundle(bundle, save_to)

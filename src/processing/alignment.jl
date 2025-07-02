@@ -12,8 +12,8 @@ _require_offsets(name, v) =
     (v isa AbstractVector && length(v) >= 2) ? v : throw(ArgumentError("Corpus is missing valid $name offsets (need >= 2 entries)."))
 
 
-function alignment_byte_to_word(byte_c::Corpus{IdT,OffsetT},
-                                word_c::Corpus{IdT,OffsetT})::CrossMap{IdT} where {IdT,OffsetT}
+function alignment_byte_to_word(byte_c::Corpus,
+                                word_c::Corpus)::CrossMap
 
     bo = _require_offsets(:byte, byte_c.byte_offsets)   # byte boundaries
     wo = _require_offsets(:word, word_c.word_offsets)   # word boundaries
@@ -22,7 +22,7 @@ function alignment_byte_to_word(byte_c::Corpus{IdT,OffsetT},
         "byte and word corpora cover different span"))
 
     nbytes = bo[end] - 1
-    b2w    = Vector{IdT}(undef, nbytes)
+    b2w    = Vector{Int}(undef, nbytes)
 
     @inbounds begin
         w, next_end = 1, wo[2]            # first word ends at wo[2]
@@ -38,8 +38,8 @@ function alignment_byte_to_word(byte_c::Corpus{IdT,OffsetT},
 end
 
 
-function alignment_char_to_word(char_c::Corpus{IdT,OffsetT},
-                                word_c::Corpus{IdT,OffsetT})::CrossMap{IdT,OffsetT} where {IdT,OffsetT}
+function alignment_char_to_word(char_c::Corpus,
+                                word_c::Corpus)::CrossMap
 
     co = _require_offsets(:character, char_c.character_offsets)
     wo = _require_offsets(:word,      word_c.word_offsets)
@@ -48,7 +48,7 @@ function alignment_char_to_word(char_c::Corpus{IdT,OffsetT},
         "char and word corpora cover different span"))
 
     nch = co[end] - 1
-    c2w = Vector{IdT}(undef, nch)
+    c2w = Vector{Int}(undef, nch)
 
     @inbounds begin
         w, next_end = 1, wo[2]
@@ -64,8 +64,8 @@ function alignment_char_to_word(char_c::Corpus{IdT,OffsetT},
 end
 
 
-function alignment_byte_to_char(byte_c::Corpus{IdT,OffsetT},
-                                char_c::Corpus{IdT,OffsetT})::CrossMap{IdT,OffsetT} where {IdT,OffsetT}
+function alignment_byte_to_char(byte_c::Corpus,
+                                char_c::Corpus)::CrossMap
 
     bo = _require_offsets(:byte,      byte_c.byte_offsets)
     co = _require_offsets(:character, char_c.character_offsets)
@@ -74,7 +74,7 @@ function alignment_byte_to_char(byte_c::Corpus{IdT,OffsetT},
         "byte and character corpora cover different span"))
 
     nbytes = bo[end] - 1
-    b2c    = Vector{IdT}(undef, nbytes)
+    b2c    = Vector{Int}(undef, nbytes)
 
     @inbounds begin
         ch, next_end = 1, co[2]
