@@ -1,6 +1,5 @@
 
 struct PreprocessConfiguration
-    chunk_size                :: Int
 
     # Cleaning
     lowercase                 :: Bool
@@ -32,7 +31,6 @@ const TOKENIZERS = (:whitespace, :unicode, :byte, :char)
 
 
 function PreprocessConfiguration(;  # all kwargs are optional
-        chunk_size                = 250_000,
         lowercase                 = true,
         strip_accents             = true,
         remove_control_characters = true,
@@ -60,7 +58,6 @@ function PreprocessConfiguration(;  # all kwargs are optional
     specials_dict = copy(special_tokens)
 
     return PreprocessConfiguration(
-        chunk_size,
         lowercase, strip_accents, remove_control_characters,
         remove_punctuation, normalise_whitespace, trim_edges,
         tokenizer_name, preserve_empty_tokens,

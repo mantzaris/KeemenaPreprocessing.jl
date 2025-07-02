@@ -69,7 +69,7 @@ function _preprocess_core(sources,
 end
 
 
-function doc_chunk_iterator(srcs, cfg; chunk_tokens::Int = cfg.chunk_size)
+function doc_chunk_iterator(srcs, cfg; chunk_tokens::Int = 250_000)
     est_tokens(doc) = count(isspace, doc) + 1     # quick proxy
 
     return Channel{Vector{String}}() do ch
