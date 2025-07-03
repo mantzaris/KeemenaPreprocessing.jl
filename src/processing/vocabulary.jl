@@ -65,10 +65,22 @@ function build_vocabulary(tokens::Vector{String};
 end
 
 
+"""
+    special_token_id(vocab, sym::Symbol)
+
+Return the numeric ID of the special token `sym`.  Raises an informative
+error if the special is missing.
+"""
+special_token_id(vocab::Vocabulary, sym::Symbol) =
+    get(vocab.special_tokens, sym) do
+        throw(ArgumentError("Special token :$sym not present; have $(keys(vocab.special_tokens))"))
+    end
+
+
 function build_vocabulary(tokens::Vector{UInt8};
                           cfg::PreprocessConfiguration)
 
-    str_tokens = String.(Char.(tokens))          # one-byte strings
+    str_tokens = string.(Char.(tokens))          # one-byte strings
     return build_vocabulary(str_tokens; cfg = cfg)
 end
 

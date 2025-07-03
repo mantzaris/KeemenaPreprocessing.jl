@@ -49,7 +49,7 @@ function assemble_bundle(tokens::AbstractVector,
     lb     = LevelBundle(corpus, vocab)
     lvls   = Dict(level => lb)                 # present levels only
 
-    meta   = PipelineMetadata(cfg)             # provenance
+    meta = PipelineMetadata(cfg, v"1.0.0")
 
     return PreprocessBundle(lvls; metadata = meta, extras = nothing)
 

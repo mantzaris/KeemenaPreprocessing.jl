@@ -52,15 +52,8 @@ struct CrossMap
 end
 
 
-function CrossMap(src::Symbol,
-                  dst::Symbol,
-                  align::AbstractVector{<:Integer})
-
-    vec = align isa Vector{Int} ? align : Vector{Int}(align) # 1 time copy and convert
-
-    # call the automatically generated constructor for (Symbol, Symbol, Vector{Int})
-    return Base.@invoke CrossMap(::Symbol, ::Symbol, ::Vector{Int})(src, dst, vec)
-end
+CrossMap(src::Symbol, dst::Symbol, align::AbstractVector{<:Integer}) =
+    CrossMap(src, dst, Vector{Int}(align)) 
 
 
 struct PreprocessBundle{ExtraT}
@@ -128,17 +121,21 @@ function validate_offsets(corpus::Corpus, level_name::Symbol)
     offsets = getfield(corpus, field)
     offsets === nothing && return                  # offsets not recorded for this level
 
-    expected_len = length(corpus.token_ids) + 1    # one entry per token + sentinel
 
-    length(offsets) == expected_len ||
-        error("Offsets for level $level_name must have length $expected_len, got $(length(offsets))")
+    # The number of tokens at a given level should correspond to the number of
+    # offset segments.
+    expected_tokens = length(offsets) - 1
+    if length(corpus.token_ids) != expected_tokens
+        error("Corpus for level :$level_name has $(length(corpus.token_ids)) tokens, but its offsets define $expected_tokens segments.")
+    end
 
-    offsets[end] == expected_len ||
-        error("Offsets sentinel should be $expected_len, got $(offsets[end])")
+    # The offsets must still be strictly increasing.
+    issorted(offsets, lt = <) ||
+        error("Offsets for level :$level_name must be strictly increasing")
 
-    issorted(offsets, lt = <) ||                   # strict increase
-        error("Offsets for level $level_name must be strictly increasing")
 end
+
+
 
 
 has_level(bundle::PreprocessBundle, level::Symbol) = haskey(bundle.levels, level)

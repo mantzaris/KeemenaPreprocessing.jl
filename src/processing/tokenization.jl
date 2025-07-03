@@ -12,9 +12,11 @@ _ws_tokenizer(str::AbstractString) = split(str) .|> String
 
 
 # very small Unicode-word-boundary heuristic (good enough for English + mixed)
-const _WB_RE = r"(?<=\p{L}|\p{N})[\p{M}\p{Pc}\p{Pd}\p{Nd}\p{L}]*" #r"(?<=\\p{L}|\\p{N})[\\p{M}\\p{Pc}\\p{Pd}\\p{Nd}\\p{L}]*"
+const _WB_RE = r"\p{L}[\p{M}\p{Pc}\p{Pd}\p{Nd}\p{L}]*" *
+               r"|\p{N}[\p{M}\p{Pc}\p{Pd}\p{Nd}\p{L}]*"
 
-_unicode_tokenizer(str::AbstractString) = [ String(m.match) for m in eachmatch(_WB_RE, str) ]
+_unicode_tokenizer(str::AbstractString) =
+    [String(m.match) for m in eachmatch(_WB_RE, str)]
 
 
 #raw UTF-8 bytes

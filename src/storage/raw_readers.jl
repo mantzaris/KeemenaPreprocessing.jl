@@ -26,7 +26,7 @@ end
 
 
 function _read_file(path::AbstractString)::String
-    open(path, "r", encoding="UTF-8") do io
+    open(path, "r") do io
         read(io, String) |> x -> replace(x, _EOL_RE => "\n")
     end
 end
