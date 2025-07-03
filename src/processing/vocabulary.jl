@@ -85,6 +85,32 @@ function build_vocabulary(tokens::Vector{UInt8};
 end
 
 
+function build_vocabulary(freqs::Dict{String,Int}; cfg::PreprocessConfiguration)
+    specials = Dict(cfg.special_tokens)
+    cfg.record_sentence_offsets && (specials[:bos] = get(specials,:bos,"<BOS>");
+                                    specials[:eos] = get(specials,:eos,"<EOS>"))
+
+    id_to_tok = String[]
+    tok_to_id = Dict{String,Int}()
+
+    for sym in sort!(collect(keys(specials)))
+        tok = specials[sym]
+        push!(id_to_tok, tok);  tok_to_id[tok] = length(id_to_tok)
+    end
+
+    for tok in sort!(collect(keys(freqs)))
+        f = freqs[tok]
+        (f < cfg.minimum_token_frequency || haskey(tok_to_id,tok)) && continue
+        push!(id_to_tok, tok);  tok_to_id[tok] = length(id_to_tok)
+    end
+
+    token_freqs = Int64[get(freqs, tok, 0) for tok in id_to_tok]
+    specials_id = Dict(sym => tok_to_id[str] for (sym,str) in specials)
+
+    Vocabulary(id_to_tok, tok_to_id, token_freqs, specials_id)
+end
+
+
 end # module _Vocabulary
 
 

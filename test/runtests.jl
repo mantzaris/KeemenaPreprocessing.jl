@@ -1,8 +1,10 @@
 
 
 using KeemenaPreprocessing
+using KeemenaPreprocessing: doc_chunk_iterator 
 using Test
 using StatsBase, Random
+using BenchmarkTools 
 
 # include("preprocessor_state.jl")
 

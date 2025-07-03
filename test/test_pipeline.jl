@@ -1,5 +1,7 @@
 
 
+
+
 @testset "Pipeline Tests (Minimal)" begin
 
     # Test data
@@ -92,5 +94,87 @@
         @test length(bundles) >= 1
         @test all(bundle -> bundle.levels[:word].vocabulary === vocab, bundles)
     end
+
+
+    # -------------------------------------------------------------------
+    
+    function make_corpus(ntoks; vocab = ["foo","bar","baz","qux","quux"])
+        rng = MersenneTwister(1234)
+        toks = [vocab[rand(rng, 1:length(vocab))] for _ in 1:ntoks]
+        docs = String[]
+        i    = 1
+        while i ≤ ntoks
+            len   = rand(rng, 5:15)                        # doc length
+            stop  = min(i+len-1, ntoks)
+            push!(docs, join(toks[i:stop], ' '))
+            i = stop + 1
+        end
+        return docs
+    end
+
+    # small utility to count tokens quickly
+    count_tokens(doc) = count(isspace, doc) + 1
+
+    @testset "doc_chunk_iterator splits correctly" begin
+        docs           = make_corpus(100_000)              # ~100 K tokens
+        cfg            = PreprocessConfiguration(tokenizer_name = :whitespace)
+        chunk_tokens   = 7_500
+        total_count    = 0
+        max_chunk_size = 0
+        for batch in doc_chunk_iterator(docs, cfg; chunk_tokens)
+            batch_tokens = sum(count_tokens, batch)
+            total_count += batch_tokens
+            max_chunk_size = max(max_chunk_size, batch_tokens)
+            @test batch_tokens ≤ chunk_tokens
+        end
+        @test total_count == sum(count_tokens, docs)
+        @test max_chunk_size ≤ chunk_tokens                # sanity
+    end
+
+
+    @testset "_streaming_counts equals naïve counts" begin
+        docs = make_corpus(200_000)                        # larger
+        cfg  = PreprocessConfiguration(tokenizer_name = :whitespace)
+
+        # Naïve reference
+        clean      = clean_documents(docs, cfg)
+        toks, _    = tokenize_and_segment(clean, cfg)
+        ref_freqs  = Dict{String,Int}()
+        foreach(t-> ref_freqs[t] = get(ref_freqs,t,0)+1, toks)
+
+        # Streaming
+        stream_freqs = KeemenaPreprocessing._streaming_counts(docs, cfg; chunk_tokens = 10_000)
+
+        @test stream_freqs == ref_freqs
+    end
+
+    @testset "preprocess_corpus_streaming large corpus" begin
+        big_docs      = make_corpus(1_000_000)             # ~1 M tokens
+        cfg           = PreprocessConfiguration(tokenizer_name = :whitespace)
+
+        #build vocabulary once (streaming path)
+        freqs  = KeemenaPreprocessing._streaming_counts(big_docs, cfg; chunk_tokens = 20_000)
+        vocab  = KeemenaPreprocessing.build_vocabulary(freqs; cfg = cfg)
+
+        #preprocess corpus in small bundles
+        chunk_tokens = 15_000                              # force many bundles
+        stream = KeemenaPreprocessing.preprocess_corpus_streaming(big_docs;
+                                            cfg   = cfg,
+                                            vocab = vocab,
+                                            chunk_tokens = chunk_tokens)
+
+        bundles = collect(stream)
+
+        @test !isempty(bundles)                            # got something
+        @test all(b -> b isa PreprocessBundle, bundles)
+        @test all(b -> b.levels[:word].vocabulary === vocab, bundles)
+        # Optional: make sure more than one chunk was produced
+        @test length(bundles) > 1
+    end
+
+
+
+
+
 
 end

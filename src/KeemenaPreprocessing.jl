@@ -37,7 +37,7 @@ export alignment_byte_to_word, alignment_char_to_word, alignment_byte_to_char, b
 
 include(joinpath(@__DIR__, "pipeline", "pipeline.jl"))
 
-export preprocess_corpus, preprocess_corpus_streaming #pipeline.jl
+export preprocess_corpus, preprocess_corpus_streaming, doc_chunk_iterator #pipeline.jl
 
 
 #storage
