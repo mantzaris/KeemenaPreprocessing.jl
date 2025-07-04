@@ -1,6 +1,6 @@
 module _Alignment
 
-using ..KeemenaPreprocessing: Corpus, CrossMap, PreprocessBundle, get_corpus
+using ..KeemenaPreprocessing: Corpus, CrossMap, PreprocessBundle, LevelBundle, get_corpus, add_level!, Vocabulary
 
 "return validated offset vector or throw"
 _require_offsets(name, v) =
@@ -83,6 +83,64 @@ function build_alignments!(bund::PreprocessBundle;
     return bund
 end
 
+
+
+const _DUMMY_VOCAB = Vocabulary(["<UNK>"], Dict("<UNK>" => 1),
+                                [0], Dict(:unk => 1))
+
+"""
+    _ensure_lower_levels!(bundle)
+
+Populate :character and :byte levels (and vocabularies) if they are missing but
+the necessary offset vectors are already stored in the *word* corpus.
+"""
+function _ensure_lower_levels!(bundle::PreprocessBundle)
+    wcorp  = get_corpus(bundle, :word)
+
+    add_lvl(lvl, offs) = !haskey(bundle.levels, lvl) && offs !== nothing
+
+    # character level 
+    if add_lvl(:character, wcorp.character_offsets)
+        n  = length(wcorp.character_offsets) - 1
+        lb = LevelBundle(
+                 Corpus(fill(1,n),                      # token_ids -> <UNK>
+                        wcorp.document_offsets,        # share doc segmentation
+                        nothing, nothing, nothing,
+                        copy(wcorp.character_offsets), # character_offsets
+                        copy(wcorp.byte_offsets)),     # also carry byte_offsets
+                 _DUMMY_VOCAB)
+        add_level!(bundle, :character, lb)
+    end
+
+    # byte level 
+    if add_lvl(:byte, wcorp.byte_offsets)
+        n  = length(wcorp.byte_offsets) - 1
+        lb = LevelBundle(
+                 Corpus(fill(1,n),
+                        wcorp.document_offsets,
+                        nothing, nothing, nothing,
+                        nothing, copy(wcorp.byte_offsets)),
+                 _DUMMY_VOCAB)
+        add_level!(bundle, :byte, lb)
+    end
+
+    return bundle
+end
+
+
+"""
+    build_ensure_alignments!(bundle)
+
+Guarantee that :byte, :character, and :word levels (if offsets exist) and their
+default alignments are present.  Idempotent.
+"""
+function build_ensure_alignments!(bundle::PreprocessBundle)
+    _ensure_lower_levels!(bundle)
+    build_alignments!(bundle)
+    return bundle
+end
+
+
 end # module
 
-import ._Alignment: alignment_byte_to_word, alignment_char_to_word, alignment_byte_to_char, build_alignments!
+import ._Alignment: alignment_byte_to_word, alignment_char_to_word, alignment_byte_to_char, build_alignments!, _ensure_lower_levels!, build_ensure_alignments!

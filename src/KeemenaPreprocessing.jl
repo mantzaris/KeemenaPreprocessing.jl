@@ -32,7 +32,7 @@ export clean_documents #cleaning.jl
 export tokenize_and_segment #tokenization.jl
 export build_vocabulary #vocabulary.jl
 export assemble_bundle, assemble_multi #assemble.jl
-export alignment_byte_to_word, alignment_char_to_word, alignment_byte_to_char, build_alignments! #alignment
+export alignment_byte_to_word, alignment_char_to_word, alignment_byte_to_char, build_alignments!, _ensure_lower_levels!, build_ensure_alignments! #alignment
 
 
 include(joinpath(@__DIR__, "pipeline", "pipeline.jl"))

@@ -40,7 +40,7 @@ function _preprocess_core(sources,
     # 3 vocab + bundle
     vocab         = build_vocabulary(tokens; cfg=cfg)
     bundle        = assemble_bundle(tokens, offs, vocab, cfg)
-    build_alignments!(bundle)
+    build_ensure_alignments!(bundle) #build_alignments!(bundle)
 
     save_to !== nothing && save_preprocess_bundle(bundle, save_to)
     return bundle
@@ -64,7 +64,7 @@ function preprocess_corpus_streaming(srcs;
             clean_docs        = clean_documents(docs, cfg)
             tokens, offs      = tokenize_and_segment(clean_docs, cfg)
             bundle            = assemble_bundle(tokens, offs, vocab, cfg)
-            build_alignments!(bundle)
+            build_ensure_alignments!(bundle) #build_alignments!(bundle)
             put!(ch, bundle)
         end
     end

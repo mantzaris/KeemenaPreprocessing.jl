@@ -9,7 +9,7 @@
     
     @testset "preprocess_corpus basic functionality" begin
         # Test with default configuration
-        bundle = preprocess_corpus(test_docs)
+        bundle = KeemenaPreprocessing.preprocess_corpus(test_docs)
         
         @test bundle isa PreprocessBundle
         @test haskey(bundle.levels, :word)
@@ -19,7 +19,7 @@
 
     @testset "preprocess_corpus with kwargs" begin
         # Test with keyword arguments
-        bundle = preprocess_corpus(test_docs, tokenizer_name=:whitespace, lowercase=false)
+        bundle = KeemenaPreprocessing.preprocess_corpus(test_docs, tokenizer_name=:whitespace, lowercase=false)
         
         @test bundle isa PreprocessBundle
         @test bundle.metadata.configuration.tokenizer_name == :whitespace
@@ -28,8 +28,8 @@
 
     @testset "preprocess_corpus with config object" begin
         # Test with explicit configuration
-        cfg = PreprocessConfiguration(tokenizer_name=:whitespace, remove_punctuation=false)
-        bundle = preprocess_corpus(test_docs, config=cfg)
+        cfg = KeemenaPreprocessing.PreprocessConfiguration(tokenizer_name=:whitespace, remove_punctuation=false)
+        bundle = KeemenaPreprocessing.preprocess_corpus(test_docs, config=cfg)
         
         @test bundle isa PreprocessBundle
         @test bundle.metadata.configuration.tokenizer_name == :whitespace
@@ -38,8 +38,8 @@
 
     @testset "preprocess_corpus config method" begin
         # Test the second method signature
-        cfg = PreprocessConfiguration(tokenizer_name=:whitespace)
-        bundle = preprocess_corpus(test_docs, cfg)
+        cfg = KeemenaPreprocessing.PreprocessConfiguration(tokenizer_name=:whitespace)
+        bundle = KeemenaPreprocessing.preprocess_corpus(test_docs, cfg)
         
         @test bundle isa PreprocessBundle
         @test bundle.metadata.configuration === cfg
@@ -50,13 +50,13 @@
         temp_dir = mktempdir()
         save_path = joinpath(temp_dir, "test_bundle.jld2")
         
-        bundle = preprocess_corpus(test_docs, save_to=save_path)
+        bundle = KeemenaPreprocessing.preprocess_corpus(test_docs, save_to=save_path)
         
         @test bundle isa PreprocessBundle
         @test isfile(save_path)
         
         # Verify saved bundle can be loaded
-        loaded_bundle = load_preprocess_bundle(save_path)
+        loaded_bundle = KeemenaPreprocessing.load_preprocess_bundle(save_path)
         @test loaded_bundle isa PreprocessBundle
         
         # Clean up
@@ -65,15 +65,15 @@
 
     @testset "preprocess_corpus error handling" begin
         # Test that config and kwargs can't be used together
-        cfg = PreprocessConfiguration()
-        @test_throws ErrorException preprocess_corpus(test_docs, config=cfg, lowercase=false)
+        cfg = KeemenaPreprocessing.PreprocessConfiguration()
+        @test_throws ErrorException KeemenaPreprocessing.preprocess_corpus(test_docs, config=cfg, lowercase=false)
     end
 
     @testset "preprocess_corpus_streaming basic test" begin
-        cfg = PreprocessConfiguration(tokenizer_name=:whitespace)
+        cfg = KeemenaPreprocessing.PreprocessConfiguration(tokenizer_name=:whitespace)
         
         # Test streaming preprocessing
-        stream = preprocess_corpus_streaming(test_docs, cfg=cfg)
+        stream = KeemenaPreprocessing.preprocess_corpus_streaming(test_docs, cfg=cfg)
         bundles = collect(stream)
         
         @test length(bundles) >= 1
@@ -83,12 +83,12 @@
 
     @testset "preprocess_corpus_streaming with vocab" begin
         # First create a vocabulary
-        cfg = PreprocessConfiguration(tokenizer_name=:whitespace)
-        initial_bundle = preprocess_corpus(test_docs, config=cfg)
+        cfg = KeemenaPreprocessing.PreprocessConfiguration(tokenizer_name=:whitespace)
+        initial_bundle = KeemenaPreprocessing.preprocess_corpus(test_docs, config=cfg)
         vocab = initial_bundle.levels[:word].vocabulary
         
         # Test streaming with pre-built vocabulary
-        stream = preprocess_corpus_streaming(test_docs, cfg=cfg, vocab=vocab)
+        stream = KeemenaPreprocessing.preprocess_corpus_streaming(test_docs, cfg=cfg, vocab=vocab)
         bundles = collect(stream)
         
         @test length(bundles) >= 1
@@ -117,7 +117,7 @@
 
     @testset "doc_chunk_iterator splits correctly" begin
         docs           = make_corpus(100_000)              # ~100 K tokens
-        cfg            = PreprocessConfiguration(tokenizer_name = :whitespace)
+        cfg            = KeemenaPreprocessing.PreprocessConfiguration(tokenizer_name = :whitespace)
         chunk_tokens   = 7_500
         total_count    = 0
         max_chunk_size = 0
@@ -134,11 +134,11 @@
 
     @testset "_streaming_counts equals naïve counts" begin
         docs = make_corpus(200_000)                        # larger
-        cfg  = PreprocessConfiguration(tokenizer_name = :whitespace)
+        cfg  = KeemenaPreprocessing.PreprocessConfiguration(tokenizer_name = :whitespace)
 
         # Naïve reference
-        clean      = clean_documents(docs, cfg)
-        toks, _    = tokenize_and_segment(clean, cfg)
+        clean      = KeemenaPreprocessing.clean_documents(docs, cfg)
+        toks, _    = KeemenaPreprocessing.tokenize_and_segment(clean, cfg)
         ref_freqs  = Dict{String,Int}()
         foreach(t-> ref_freqs[t] = get(ref_freqs,t,0)+1, toks)
 
@@ -150,7 +150,7 @@
 
     @testset "preprocess_corpus_streaming large corpus" begin
         big_docs      = make_corpus(1_000_000)             # ~1 M tokens
-        cfg           = PreprocessConfiguration(tokenizer_name = :whitespace)
+        cfg           = KeemenaPreprocessing.PreprocessConfiguration(tokenizer_name = :whitespace)
 
         #build vocabulary once (streaming path)
         freqs  = KeemenaPreprocessing._streaming_counts(big_docs, cfg; chunk_tokens = 20_000)
