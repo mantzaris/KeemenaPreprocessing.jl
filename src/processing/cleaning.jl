@@ -1,4 +1,3 @@
-# TODO: add more cleaning like emojis removal etc
 
 
 module _Cleaning   # private to avoid name clashes
@@ -16,6 +15,12 @@ const _COMBINING_RE = r"\p{Mn}"
 
 
 # --- helpers ---------------------------------------------------------------
+@inline function normalize_unicode(text::AbstractString; form::Symbol = :NFC)
+    form == :none && return text
+    form in (:NFC, :NFD, :NFKC, :NFKD) ||
+        throw(ArgumentError("Unsupported normalization form: $form"))
+    return Unicode.normalize(text, form)
+end
 
 """
     _strip_accents(s) -> String
@@ -30,7 +35,342 @@ function _strip_accents(s::AbstractString)
 end
 
 
-# --- public API ------------------------------------------------------------
+"""
+    normalize_whitespace(text;
+                         strip_ends        = true,
+                         preserve_newlines = false,
+                         remove_zero_width = false) -> String
+
+ • Collapse runs of whitespace to a single space.
+   - If `preserve_newlines=true`, 'hard' new-line characters are kept
+     while spaces/tabs/CR/FF collapse.
+
+ • Optionally strip leading/trailing blanks (`strip_ends = true`).
+
+ • Optionally remove common zero-width code-points
+   (ZWSP, ZWNJ, ZWJ, NBSP-like BOM).
+
+The helper is UTF-8-safe and leaves non-whitespace graphemes unchanged.
+"""
+function normalize_whitespace(text::AbstractString;
+                              strip_ends::Bool        = true,
+                              preserve_newlines::Bool = false,
+                              remove_zero_width::Bool = false,
+                              collapse_spaces::Bool   = true)
+
+    isempty(text) && return ""                      # quick exit
+
+    t = text
+
+    if remove_zero_width
+        # ZWSP U+200B, ZWNJ U+200C, ZWJ U+200D, BOM U+FEFF
+        t = replace(t, r"[\u200B\u200C\u200D\uFEFF]+" => "")
+    end
+
+    if preserve_newlines
+        # collapse blanks except LF; keep a single space
+        t = replace(t, r"[ \t\f\r]+" => " ")
+        # remove blanks that precede newline(s)
+        t = replace(t, r" +\n" => "\n")
+    else
+        collapse_spaces && (t = replace(t, r"\s+" => " "))
+    end
+
+    strip_ends && (t = strip(t))                    # leading/trailing
+
+    return t
+end
+
+
+
+if !@isdefined(_UNICODE_PUNCT_TABLE)
+    const _UNICODE_PUNCT_TABLE = Dict(
+        '“' => "\"",  '”' => "\"",
+        '‘' => "\'",  '’' => "\'",
+        '«' => "\"",  '»' => "\"",
+        '‐' => "-",   '-' => "-",   # hyphen & non-breaking hyphen
+        '–' => "-",   '—' => "-",   '―' => "-",   # en / em / horiz. bar
+        '…' => "...",
+        '‹' => "<",   '›' => ">"
+    )
+end
+
+"""
+    map_unicode_punctuation(text) -> String
+
+Replace curly quotes, long dashes, ellipsis, guillemets, and similar
+typographic marks with their plain-ASCII counterparts.  
+Runs in a single `replace` call.
+"""
+@inline map_unicode_punctuation(s::AbstractString) =
+    replace(s, _UNICODE_PUNCT_TABLE)
+
+
+#TODO: \p{Emoji} JuliaLang Base.Unicode 1.11 has :Emoji
+if !@isdefined(EMOJI_RANGES)
+    const EMOJI_RANGES = Tuple{UInt32,UInt32}[
+        (0x1F300, 0x1F5FF),
+        (0x1F600, 0x1F64F),
+        (0x1F680, 0x1F6FF),
+        (0x1F700, 0x1F77F),
+        (0x1F900, 0x1F9FF),
+        (0x1FA70, 0x1FAFF),
+        (0x2600,  0x26FF),
+        (0x2700,  0x27BF),
+        (0x1F1E6, 0x1F1FF),
+        (0x1F3FB, 0x1F3FF),
+        (0xFE0F,  0xFE0F),   #VS-16
+        (0x200D,  0x200D),   #ZWJ
+    ]
+end
+
+
+@inline in_emoji_codepoint(c::Char) = begin
+    cp = UInt32(c)
+    any(lo <= cp <= hi for (lo,hi) in EMOJI_RANGES)
+end
+  
+"""
+    isEmoji(grapheme::AbstractString) -> Bool
+
+True if **all** code-points in the grapheme cluster are emoji-range or
+emoji modifiers (VS-16, ZWJ, etc)
+"""
+function isEmoji(g::AbstractString)
+    for c in g
+        cp = UInt32(c)
+        if cp == 0xFE0F || cp == 0x200D  # VS-16 or ZWJ -> modifier
+            continue
+        end
+        in_emoji_codepoint(c) || return false
+    end
+    return true
+end  
+
+function _rewrite_emojis(text::String, cfg::PreprocessConfiguration)
+    eh = cfg.emoji_handling
+    eh === :keep && return text
+
+    buf = IOBuffer()
+    in_run = false
+
+    for g in eachgrapheme(text)
+        if isEmoji(g)
+            in_run = true
+        else
+            if in_run && eh === :sentinel
+                write(buf, cfg.emoji_sentinel)
+            end
+            in_run = false
+            write(buf, g)
+        end
+    end
+    if in_run && eh === :sentinel
+        write(buf, cfg.emoji_sentinel)
+    end
+    return String(take!(buf))     # :remove path writes nothing
+end
+
+
+"""
+    replace_urls_emails(text;
+                        url_sentinel   = "<URL>",
+                        mail_sentinel  = "<EMAIL>",
+                        keep_scheme    = false) -> String
+
+Replace every HTTP/HTTPS URL and every e-mail address with a sentinel token
+so the vocabulary is not polluted by arbitrary host names, query strings, or
+usernames.
+
+* `url_sentinel` - token that replaces each URL.
+* `mail_sentinel` - token that replaces each e-mail address.
+* `keep_scheme = true` - if set, keeps the leading `http://` or `https://`
+  and replaces only the remainder.  Useful when you want to distinguish
+  secure (`https`) from plain (`http`) links while still shielding the rest
+  of the text.
+
+Returns a new `String`; original text is unchanged.
+"""
+function replace_urls_emails(text::AbstractString;
+                             url_sentinel::AbstractString = "<URL>",
+                             mail_sentinel::AbstractString = "<EMAIL>",
+                             keep_scheme::Bool = false)::String
+
+    #regexes are compiled once at method definition
+    URL_RE  = r"(https?://)?[A-Za-z0-9\-_]+(\.[A-Za-z0-9\-_]+)+(/[^\s]*)?"
+    MAIL_RE = r"[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Za-z]{2,}"
+
+    #step 1 - e-mails (do first so mail-like URLs aren't double-substituted)
+    stripped = replace(text, MAIL_RE => mail_sentinel)
+
+    #step 2 - URLs
+    if keep_scheme
+        #preserve http:// or https://, replace the rest
+        stripped = replace(stripped, URL_RE) do m
+            startswith(m.match, "http") ? m.match[1:findfirst("://", m.match).stop] * url_sentinel :
+                                          url_sentinel
+        end
+    else
+        stripped = replace(stripped, URL_RE => url_sentinel)
+    end
+
+    return stripped
+end
+
+
+if !@isdefined(_THOUSANDS_RE)
+    const _THOUSANDS_RE = r"(?<=\d),(?=\d\d\d\b)"   # 1,234 -> 1234
+end
+if !@isdefined(_NUM_RE)
+    const _NUM_RE       = r"[0-9]+"  # core digits
+end
+
+
+
+@inline function replace_numbers(text::AbstractString;
+        sentinel::AbstractString = "<NUM>",
+        keep_decimal::Bool       = false,
+        keep_sign::Bool          = false,
+        keep_commas::Bool        = false)::String
+
+    isempty(text) && return text   # fast-path
+
+    # 1 standardise separators if requested
+    t = keep_commas ? replace(text, _THOUSANDS_RE => "") : text
+
+    # 2 main pass - a single replace with captured groups
+    NUM_PAT = r"""
+        (?:
+            (?P<sign>[+-])?                    # optional sign
+            (?P<int>\d+)                       # integer part
+            (?:\.(?P<frac>\d+))?               # optional .fraction
+        )
+    """x
+    return replace(t, NUM_PAT) do m
+        parts = IOBuffer()
+        keep_sign && !isempty(m["sign"]) && write(parts, m["sign"])
+        write(parts, sentinel)
+        if keep_decimal && !isempty(m["frac"])
+            write(parts, '.' * m["frac"])
+        end
+        String(take!(parts))
+    end
+end
+
+
+"""
+    strip_html(text;
+               decode_entities = true) -> String
+
+Remove HTML/XML tags (`<...>`) and, optionally, replace the most common HTML
+entities with their Unicode characters.  The regex is safe for well-formed
+markup and tolerates attributes and self-closing tags.
+
+Examples
+--------
+julia> strip_html("<div>Hello&nbsp;world&#33;</div>")
+"Hello world!"
+
+The function is dependency-free and UTF-8-safe.  It makes **no** attempt to
+preserve inline images, styles, or scripts; those are dropped entirely.
+"""
+function strip_html(text::AbstractString; decode_entities::Bool = true)
+    # 1 — zap tags (`<tag attr="...">`, `</tag>`, `<!-- comments -->`)
+    cleaned = replace(text, r"<[^>]*>" => "")
+
+    # 2 — optionally decode entities
+    if decode_entities
+        cleaned = replace(cleaned, Dict(
+            "&nbsp;" => "\u00A0",
+            "&lt;"   => "<",
+            "&gt;"   => ">",
+            "&amp;"  => "&",
+            "&quot;" => "\"",
+            "&apos;" => "'",
+            "&#39;"  => "'",
+            "&#34;"  => "\""
+        ))
+    end
+    return cleaned
+end
+
+
+"""
+    strip_markdown(text;
+                   preserve_code = true,
+                   code_sentinel = "<CODE>") -> String
+
+Remove common Markdown formatting:
+
+* Fenced code blocks  ```lang ... ```  and inline code  `code`
+* Images  ![alt](url)  →  `alt`  (or sentinel if no alt)
+* Links   [text](url)  →  `text`
+* Bold / italic markers **text**, __text__, *text*, _text_
+* Headings (#, ##, …), horizontal rules, blockquotes, list bullets
+
+If `preserve_code = true`, code blocks/inlines are replaced by `code_sentinel`;
+otherwise they are removed entirely.
+"""
+function strip_markdown(text::AbstractString;
+                        preserve_code::Bool = true,
+                        code_sentinel::AbstractString = "<CODE>")::String
+    t = text
+
+    # 1 — images ![alt](url)  -> alt or sentinel
+    t = replace(t, r"!\[([^\]]*)\]\([^\)]*\)" => s -> isempty(s.captures[1]) ? "" : s.captures[1])
+
+    # 2 — links [text](url) -> text
+    t = replace(t, r"\[([^\]]+)\]\([^\)]*\)" => s -> s.captures[1])
+
+    # 3 — fenced code blocks ``` ``` (lazy, non-greedy)
+    fence_re = r"```[\s\S]*?```"
+    t = preserve_code ? replace(t, fence_re => code_sentinel) : replace(t, fence_re => "")
+
+    # 4 — inline code `code`
+    inline_re = r"`[^`]+`"
+    t = preserve_code ? replace(t, inline_re => code_sentinel) : replace(t, inline_re => "")
+
+    # 5 — bold/italic, headings, hrules, blockquotes, lists
+    t = replace(t, r"[*_]{1,3}([^*_]+)[*_]{1,3}" => s -> s.captures[1])   # bold / italic
+    t = replace(t, r"^#+\s*"m => "")          # headings
+    t = replace(t, r"^>+\s*"m  => "")         # blockquotes
+    t = replace(t, r"^[-*+]\s+"m => "")       # bullets
+    t = replace(t, r"^\s*[-*_]{3,}\s*$"m => "") # hrule
+
+    return t
+end
+
+
+# Collapse any run of the same code-point to ≤ max_run
+@inline function squeeze_char_runs(text::AbstractString; max_run::Int = 3)
+    isempty(text) && return text
+    buf  = IOBuffer()
+    prev = '\0'; run = 0
+    for c in text
+        if c == prev
+            run += 1
+            run ≤ max_run && write(buf, c)
+        else
+            run = 1
+            write(buf, c)
+            prev = c
+        end
+    end
+    return String(take!(buf))
+end
+
+# Minimal confusable map (Latin look-alikes); extend as needed.
+if !@isdefined(_CONFUSABLES)
+    const _CONFUSABLES = Dict(
+        'Α'=>'A','Β'=>'B','Ε'=>'E','Η'=>'H','Ι'=>'I','Κ'=>'K','Μ'=>'M','Ν'=>'N',
+        'Ο'=>'O','Ρ'=>'P','Τ'=>'T','Υ'=>'Y','Χ'=>'X','а'=>'a','е'=>'e','о'=>'o',
+        'р'=>'p','с'=>'c','х'=>'x','ї'=>'i','і'=>'i','ӏ'=>'l'
+    )
+end
+
+@inline normalize_confusables(s::AbstractString) =
+    replace(s, _CONFUSABLES)
+
 
 
 # main public function
@@ -48,12 +388,66 @@ function clean_documents(docs::Vector{String}, cfg::PreprocessConfiguration)
     for (i, doc) in pairs(docs)
         s = doc
 
+        s = normalize_unicode(s; form = cfg.unicode_normalisation_form)
+
+        if cfg.strip_html_tags
+            s = strip_html(s; decode_entities = cfg.html_entity_decode)
+        end
+
+        if cfg.strip_markdown
+            s = strip_markdown(s;
+                    preserve_code = cfg.preserve_md_code,
+                    code_sentinel = "<CODE>")
+        end
+
+        if cfg.squeeze_repeat_chars
+            s = squeeze_char_runs(s; max_run = cfg.max_char_run)
+        end
+
+        if cfg.map_confusables
+            s = normalize_confusables(s)
+        end
+
+        s = _rewrite_emojis(s, cfg)
+
+        if cfg.replace_numbers
+        s = replace_numbers(
+                s;
+                sentinel     = cfg.number_sentinel,
+                keep_decimal = cfg.keep_number_decimal,
+                keep_sign    = cfg.keep_number_sign,
+                keep_commas  = cfg.keep_number_commas)
+        end
+
+
+        if cfg.map_unicode_punctuation
+            s = map_unicode_punctuation(s)
+        end
+
+        if cfg.replace_urls || cfg.replace_emails
+            s = replace_urls_emails(s;
+                url_sentinel  = cfg.url_sentinel,
+                mail_sentinel = cfg.mail_sentinel,
+                keep_scheme   = cfg.keep_url_scheme)
+        end
+
         cfg.lowercase                 && (s = lowercase(s))
         cfg.strip_accents             && (s = _strip_accents(s))
         cfg.remove_control_characters && (s = replace(s, _CTRL_RE => ""))
-        cfg.remove_punctuation        && (s = replace(s, _PUNCT_RE => ""))
-        cfg.normalise_whitespace      && (s = replace(s, _WS_RE => " "))
-        cfg.trim_edges                && (s = strip(s))
+        
+        
+        # whitespace, zero-width, edges (all via your helper)
+        if cfg.normalise_whitespace || cfg.remove_zero_width_chars
+            s = normalize_whitespace(s;
+                    strip_ends        = cfg.trim_edges,
+                    preserve_newlines = cfg.preserve_newlines,
+                    remove_zero_width = cfg.remove_zero_width_chars,
+                    collapse_spaces   = cfg.collapse_spaces)
+        elseif cfg.trim_edges
+            s = strip(s)
+        end
+
+        cfg.remove_punctuation && (s = replace(s, _PUNCT_RE => ""))
 
         out[i] = s
     end
