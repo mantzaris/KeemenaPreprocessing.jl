@@ -1,6 +1,6 @@
 
 
-_default_cfg() = PreprocessConfiguration()
+_default_cfg() = KeemenaPreprocessing.PreprocessConfiguration()
 
 
 @testset "PreprocessConfiguration - defaults" begin
@@ -29,7 +29,7 @@ end
 
 
 @testset "PreprocessConfiguration - keyword overrides" begin
-    cfg = PreprocessConfiguration(lowercase = false,
+    cfg = KeemenaPreprocessing.PreprocessConfiguration(lowercase = false,
                                   tokenizer_name = :byte,
                                   record_byte_offsets = true,
                                   record_word_offsets = false,
@@ -45,8 +45,8 @@ end
 
 @testset "PreprocessConfiguration - argument checks" begin
     # minimum_token_frequency must be >= 1
-    @test_throws AssertionError PreprocessConfiguration(minimum_token_frequency = 0)
+    @test_throws AssertionError KeemenaPreprocessing.PreprocessConfiguration(minimum_token_frequency = 0)
 
     # tokenizer_name must be valid Symbol or Function
-    @test_throws AssertionError PreprocessConfiguration(tokenizer_name = :invalid_tok)
+    @test_throws AssertionError KeemenaPreprocessing.PreprocessConfiguration(tokenizer_name = :invalid_tok)
 end
