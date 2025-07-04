@@ -91,7 +91,7 @@ function PreprocessConfiguration(;  # all kwargs are optional
         strip_html_tags           = false,
         html_entity_decode        = true,
 
-        emoji_handling            = :sentinel,
+        emoji_handling            = :keep,
         emoji_sentinel            = "<EMOJI>",
 
         squeeze_repeat_chars      = false,
@@ -100,7 +100,7 @@ function PreprocessConfiguration(;  # all kwargs are optional
         map_confusables           = false,
 
         unicode_normalisation_form = :none,
-        map_unicode_punctuation = true,        
+        map_unicode_punctuation   = false,        
 
         tokenizer_name            = :whitespace,
         preserve_empty_tokens     = false,
@@ -135,20 +135,31 @@ function PreprocessConfiguration(;  # all kwargs are optional
     end
 
     return PreprocessConfiguration(
-        lowercase, strip_accents, remove_control_characters,
-        remove_punctuation, normalise_whitespace, remove_zero_width_chars,
-        preserve_newlines, collapse_spaces, trim_edges,
-        replace_numbers, number_sentinel, keep_number_decimal, keep_number_sign, keep_number_commas,
-        strip_markdown, preserve_md_code,
+        # Cleaning toggles (1-9)
+        lowercase, strip_accents, remove_control_characters, remove_punctuation,
+        normalise_whitespace, remove_zero_width_chars, preserve_newlines,
+        collapse_spaces, trim_edges,
+        # URL / e-mail replacement (10-14)
         replace_urls, replace_emails, keep_url_scheme, url_sentinel, mail_sentinel,
-        strip_html_tags, html_entity_decode,
+        # Numbers (15-19)
+        replace_numbers, number_sentinel, keep_number_decimal,
+        keep_number_sign, keep_number_commas,
+        # Markdown / HTML (20-23)
+        strip_markdown, preserve_md_code, strip_html_tags, html_entity_decode,
+        # Emoji (24-25)
         emoji_handling, emoji_sentinel,
-        squeeze_repeat_chars, max_char_run,
-        map_confusables,
+        # Char-run squeezing & confusables (26-28)
+        squeeze_repeat_chars, max_char_run, map_confusables,
+        # Unicode & punctuation (29-30)
         unicode_normalisation_form, map_unicode_punctuation,
+        # Tokeniser (31-32)
         tokenizer_name, preserve_empty_tokens,
+        # Vocabulary (33-34)
         minimum_token_frequency, specials_dict,
-        record_byte_offsets, record_character_offsets, record_word_offsets, record_sentence_offsets, record_paragraph_offsets, record_document_offsets)
+        # Off-set recording (35-40)
+        record_byte_offsets, record_character_offsets, record_word_offsets,
+        record_sentence_offsets, record_paragraph_offsets, record_document_offsets
+    )
 end
 
 
