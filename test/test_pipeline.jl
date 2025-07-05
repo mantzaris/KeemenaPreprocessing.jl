@@ -121,7 +121,7 @@
         chunk_tokens   = 7_500
         total_count    = 0
         max_chunk_size = 0
-        for batch in doc_chunk_iterator(docs, cfg; chunk_tokens)
+        for batch in KeemenaPreprocessing.doc_chunk_iterator(docs, cfg; chunk_tokens)
             batch_tokens = sum(count_tokens, batch)
             total_count += batch_tokens
             max_chunk_size = max(max_chunk_size, batch_tokens)
