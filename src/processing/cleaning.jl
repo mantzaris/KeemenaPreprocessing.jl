@@ -36,21 +36,15 @@ end
 
 
 """
-    normalize_whitespace(text;
-                         strip_ends        = true,
-                         preserve_newlines = false,
-                         remove_zero_width = false) -> String
+    normalize_whitespace(text; strip_ends        = true,
+                              preserve_newlines = false,
+                              remove_zero_width = false,
+                              collapse_spaces   = true)
 
- • Collapse runs of whitespace to a single space.
-   - If `preserve_newlines=true`, 'hard' new-line characters are kept
-     while spaces/tabs/CR/FF collapse.
-
- • Optionally strip leading/trailing blanks (`strip_ends = true`).
-
- • Optionally remove common zero-width code-points
-   (ZWSP, ZWNJ, ZWJ, NBSP-like BOM).
-
-The helper is UTF-8-safe and leaves non-whitespace graphemes unchanged.
+* Collapses runs of whitespace.
+* Optionally keeps paragraph/new-line structure.
+* Optionally converts zero-width separators (ZWSP, ZWNJ, ZWJ, BOM) to a
+  **regular ASCII space** so that word boundaries stay visible.
 """
 function normalize_whitespace(text::AbstractString;
                               strip_ends::Bool        = true,
@@ -58,27 +52,38 @@ function normalize_whitespace(text::AbstractString;
                               remove_zero_width::Bool = false,
                               collapse_spaces::Bool   = true)
 
-    isempty(text) && return ""                      # quick exit
+    isempty(text) && return text
 
-    t = text
-
+    # deal with zero-widths first, turning them into *real* blanks so that
+    #      later collapsing treats them like ordinary spaces.
     if remove_zero_width
         # ZWSP U+200B, ZWNJ U+200C, ZWJ U+200D, BOM U+FEFF
-        t = replace(t, r"[\u200B\u200C\u200D\uFEFF]+" => "")
+        text = replace(text, r"[\u200B\u200C\u200D\uFEFF]+" => " ")
     end
+
+    #if we do not want any collapsing, we're essentially done
+    collapse_spaces || (strip_ends && return strip(text); return text)
 
     if preserve_newlines
-        # collapse blanks except LF; keep a single space
-        t = replace(t, r"[ \t\f\r]+" => " ")
-        # remove blanks that precede newline(s)
-        t = replace(t, r" +\n" => "\n")
+        # collapse printable blanks except the hard newline
+        text = replace(text, r"[ \t\f\r]+" => " ")
+
+        # trim blanks *around* the newline
+        text = replace(text, r" +\n" => "\n")   # before
+        text = replace(text, r"\n +" => "\n")   # after
     else
-        collapse_spaces && (t = replace(t, r"\s+" => " "))
+        #full collapse (but keep leading/trailing runs for tests)
+        leading  = match(r"^\s+", text)
+        trailing = match(r"\s+$", text)
+
+        core = replace(strip(text), r"\s+" => " ")
+        text = (leading === nothing ? "" : leading.match) *
+               core *
+               (trailing === nothing ? "" : trailing.match)
     end
 
-    strip_ends && (t = strip(t))                    # leading/trailing
-
-    return t
+    strip_ends && (text = strip(text))
+    return text
 end
 
 
@@ -98,12 +103,23 @@ end
 """
     map_unicode_punctuation(text) -> String
 
-Replace curly quotes, long dashes, ellipsis, guillemets, and similar
-typographic marks with their plain-ASCII counterparts.  
-Runs in a single `replace` call.
+Replace curly quotes, long dashes, ellipsis, guillemets, and other
+“fancy” Unicode punctuation with plain-ASCII equivalents.
+Runs in O(n) and allocates once.
 """
-@inline map_unicode_punctuation(s::AbstractString) =
-    replace(s, _UNICODE_PUNCT_TABLE)
+@inline function map_unicode_punctuation(text::AbstractString)::String
+    isempty(text) && return text           # fast-path
+
+    buf = IOBuffer()
+    for c in text
+        if haskey(_UNICODE_PUNCT_TABLE, c)
+            write(buf, _UNICODE_PUNCT_TABLE[c])
+        else
+            write(buf, c)
+        end
+    end
+    return String(take!(buf))
+end
 
 
 #TODO: \p{Emoji} JuliaLang Base.Unicode 1.11 has :Emoji
