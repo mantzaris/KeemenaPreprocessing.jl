@@ -4,6 +4,7 @@ module _Cleaning   # private to avoid name clashes
 
 
 using Unicode
+using Unicode: graphemes
 using ..KeemenaPreprocessing: PreprocessConfiguration
 
 
@@ -170,7 +171,7 @@ function _rewrite_emojis(text::String, cfg::PreprocessConfiguration)
     buf = IOBuffer()
     in_run = false
 
-    for g in eachgrapheme(text)
+    for g in graphemes(text)
         if isEmoji(g)
             in_run = true
         else
@@ -384,8 +385,15 @@ if !@isdefined(_CONFUSABLES)
     )
 end
 
-@inline normalize_confusables(s::AbstractString) =
-    replace(s, _CONFUSABLES)
+@inline function normalize_confusables(txt::AbstractString)::String
+    isempty(txt) && return txt                     # fast-path
+
+    buf = IOBuffer()
+    for c in txt
+        write(buf, get(_CONFUSABLES, c, c))        # fallback to original char
+    end
+    return String(take!(buf))
+end
 
 
 

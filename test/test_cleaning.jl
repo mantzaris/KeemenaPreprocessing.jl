@@ -56,49 +56,50 @@
         @test KeemenaPreprocessing._Cleaning.map_unicode_punctuation("‹hello›") == "<hello>"
     end
         
-    #     @testset "emoji functions" begin
-    #         # Test in_emoji_codepoint
-    #         @test _Cleaning.in_emoji_codepoint('😀') == true
-    #         @test _Cleaning.in_emoji_codepoint('a') == false
-    #         @test _Cleaning.in_emoji_codepoint('1') == false
-            
-    #         # Test isEmoji
-    #         @test _Cleaning.isEmoji("😀") == true
-    #         @test _Cleaning.isEmoji("hello") == false
-    #         @test _Cleaning.isEmoji("a") == false
-    #         @test _Cleaning.isEmoji("") == true  # empty string should return true
-            
-    #         # Test _rewrite_emojis
-    #         cfg_keep = KeemenaPreprocessing.PreprocessConfiguration(emoji_handling=:keep)
-    #         cfg_remove = KeemenaPreprocessing.PreprocessConfiguration(emoji_handling=:remove)
-    #         cfg_sentinel = KeemenaPreprocessing.PreprocessConfiguration(emoji_handling=:sentinel, emoji_sentinel="<EMOJI>")
-            
-    #         @test _Cleaning._rewrite_emojis("hello 😀 world", cfg_keep) == "hello 😀 world"
-    #         @test _Cleaning._rewrite_emojis("hello 😀 world", cfg_remove) == "hello  world"
-    #         @test _Cleaning._rewrite_emojis("hello 😀 world", cfg_sentinel) == "hello <EMOJI> world"
-    #         @test _Cleaning._rewrite_emojis("hello world", cfg_sentinel) == "hello world"
-    #     end
+    @testset "emoji functions" begin
+        #  in_emoji_codepoint
+        @test KeemenaPreprocessing._Cleaning.in_emoji_codepoint('😀') == true
+        @test KeemenaPreprocessing._Cleaning.in_emoji_codepoint('a') == false
+        @test KeemenaPreprocessing._Cleaning.in_emoji_codepoint('1') == false
         
-    #     @testset "squeeze_char_runs" begin
-    #         @test _Cleaning.squeeze_char_runs("hello") == "hello"
-    #         @test _Cleaning.squeeze_char_runs("hellooo") == "hellooo"
-    #         @test _Cleaning.squeeze_char_runs("helloooo") == "hellooo"
-    #         @test _Cleaning.squeeze_char_runs("helloooooo") == "hellooo"
-    #         @test _Cleaning.squeeze_char_runs("aaaaaa") == "aaa"
-    #         @test _Cleaning.squeeze_char_runs("aaaaaa"; max_run=2) == "aa"
-    #         @test _Cleaning.squeeze_char_runs("aaaaaa"; max_run=1) == "a"
-    #         @test _Cleaning.squeeze_char_runs("") == ""
-    #         @test _Cleaning.squeeze_char_runs("abc") == "abc"
-    #     end
+        #  isEmoji
+        @test KeemenaPreprocessing._Cleaning.isEmoji("😀") == true
+        @test KeemenaPreprocessing._Cleaning.isEmoji("hello") == false
+        @test KeemenaPreprocessing._Cleaning.isEmoji("a") == false
+        @test KeemenaPreprocessing._Cleaning.isEmoji("") == true  # empty string should return true
         
-    #     @testset "normalize_confusables" begin
-    #         @test _Cleaning.normalize_confusables("hello") == "hello"
-    #         @test _Cleaning.normalize_confusables("Αlpha") == "Alpha"  # Greek Alpha to Latin A
-    #         @test _Cleaning.normalize_confusables("Βeta") == "Beta"    # Greek Beta to Latin B
-    #         @test _Cleaning.normalize_confusables("аpple") == "apple"  # Cyrillic a to Latin a
-    #         @test _Cleaning.normalize_confusables("") == ""
-    #     end
-    # end
+        #  _rewrite_emojis
+        cfg_keep = KeemenaPreprocessing.PreprocessConfiguration(emoji_handling=:keep)
+        cfg_remove = KeemenaPreprocessing.PreprocessConfiguration(emoji_handling=:remove)
+        cfg_sentinel = KeemenaPreprocessing.PreprocessConfiguration(emoji_handling=:sentinel, emoji_sentinel="<EMOJI>")
+        
+        @test KeemenaPreprocessing._Cleaning._rewrite_emojis("hello 😀 world", cfg_keep) == "hello 😀 world"
+        @test KeemenaPreprocessing._Cleaning._rewrite_emojis("hello 😀 world", cfg_remove) == "hello  world"
+        @test KeemenaPreprocessing._Cleaning._rewrite_emojis("hello 😀 world", cfg_sentinel) == "hello <EMOJI> world"
+        @test KeemenaPreprocessing._Cleaning._rewrite_emojis("hello world", cfg_sentinel) == "hello world"
+    end
+    
+    @testset "squeeze_char_runs" begin
+        @test KeemenaPreprocessing._Cleaning.squeeze_char_runs("hello") == "hello"
+        @test KeemenaPreprocessing._Cleaning.squeeze_char_runs("hellooo") == "hellooo"
+        @test KeemenaPreprocessing._Cleaning.squeeze_char_runs("helloooo") == "hellooo"
+        @test KeemenaPreprocessing._Cleaning.squeeze_char_runs("helloooooo") == "hellooo"
+        @test KeemenaPreprocessing._Cleaning.squeeze_char_runs("aaaaaa") == "aaa"
+        @test KeemenaPreprocessing._Cleaning.squeeze_char_runs("aaaaaa"; max_run=2) == "aa"
+        @test KeemenaPreprocessing._Cleaning.squeeze_char_runs("aaaaaa"; max_run=1) == "a"
+        @test KeemenaPreprocessing._Cleaning.squeeze_char_runs("") == ""
+        @test KeemenaPreprocessing._Cleaning.squeeze_char_runs("abc") == "abc"
+    end
+    
+    @testset "normalize_confusables" begin
+        @test KeemenaPreprocessing._Cleaning.normalize_confusables("hello") == "hello"
+        @test KeemenaPreprocessing._Cleaning.normalize_confusables("Αlpha") == "Alpha"  # Greek Alpha to Latin A
+        @test KeemenaPreprocessing._Cleaning.normalize_confusables("Βeta") == "Beta"    # Greek Beta to Latin B
+        @test KeemenaPreprocessing._Cleaning.normalize_confusables("аpple") == "apple"  # Cyrillic a to Latin a
+        @test KeemenaPreprocessing._Cleaning.normalize_confusables("") == ""
+    end
+
+end
     
     # @testset "Main Cleaning Functions" begin
         
@@ -575,5 +576,5 @@
     #         @test result_none[1] == accented_text  # Should remain unchanged
     #     end
     # end
-end
+
 
