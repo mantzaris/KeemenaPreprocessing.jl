@@ -1,7 +1,6 @@
 
 
 using KeemenaPreprocessing
-using KeemenaPreprocessing: doc_chunk_iterator 
 using Test
 using StatsBase, Random
 using JLD2

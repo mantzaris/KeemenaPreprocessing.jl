@@ -28,7 +28,7 @@ end
 
 @testset "build_vocabulary - specials (no sentence offsets)" begin
     cfg   = KeemenaPreprocessing.PreprocessConfiguration(record_sentence_offsets = false)
-    vocab = KeemenaPreprocessing.build_vocabulary(_TOKENS; cfg)     # only :unk & :pad expected
+    vocab = KeemenaPreprocessing._Vocabulary.build_vocabulary(_TOKENS; cfg)     # only :unk & :pad expected
 
     #presence of the two user-supplied specials (order-agnostic)
     @test Set(vocab.id_to_token_strings[1:2]) == Set(["<UNK>", "<PAD>"])
@@ -46,7 +46,7 @@ end
 @testset "build_vocabulary - minimum_token_frequency" begin
     cfg   = KeemenaPreprocessing.PreprocessConfiguration(minimum_token_frequency = 2,    # filter singletons
                                     record_sentence_offsets  = false)
-    vocab = KeemenaPreprocessing.build_vocabulary(_TOKENS; cfg)
+    vocab = KeemenaPreprocessing._Vocabulary.build_vocabulary(_TOKENS; cfg)
 
     @test !haskey(vocab.token_to_id_map, "test")          # only appears once
     @test haskey(vocab.token_to_id_map, "hello")          # appears 3x
@@ -59,7 +59,7 @@ end
     cfg  = KeemenaPreprocessing.PreprocessConfiguration(record_sentence_offsets = false,
                                    minimum_token_frequency = 1,
                                    special_tokens = Dict(:unk => "<UNK>"))
-    vocab = KeemenaPreprocessing.build_vocabulary(tkns; cfg)
+    vocab = KeemenaPreprocessing._Vocabulary.build_vocabulary(tkns; cfg)
 
     #specials first, sorted by Symbol; corpus tokens next, lexicographically
     @test vocab.id_to_token_strings == ["<UNK>", "a", "b", "z"]
@@ -71,7 +71,7 @@ end
     cfg   = KeemenaPreprocessing.PreprocessConfiguration(tokenizer_name = :byte,
                                     record_byte_offsets = true,
                                     record_sentence_offsets = false)
-    vocab = KeemenaPreprocessing.build_vocabulary(_BYTES; cfg)
+    vocab = KeemenaPreprocessing._Vocabulary.build_vocabulary(_BYTES; cfg)
 
     #ecah UInt8 maps to its ASCII string-equivalent
     @test vocab.id_to_token_strings[3:end] == ["A","B","C"]
@@ -80,7 +80,7 @@ end
 
 @testset "build_vocabulary - empty token list" begin
     cfg   = KeemenaPreprocessing.PreprocessConfiguration(record_sentence_offsets = false)
-    vocab = KeemenaPreprocessing.build_vocabulary(String[]; cfg)
+    vocab = KeemenaPreprocessing._Vocabulary.build_vocabulary(String[]; cfg)
 
     #both specials are present (order doesn't matter)
     @test Set(vocab.id_to_token_strings) == Set(["<UNK>", "<PAD>"])

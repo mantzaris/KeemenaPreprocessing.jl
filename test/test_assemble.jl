@@ -20,7 +20,7 @@ end
         offsets = Dict(:document => [1, 4])  # Single document
         cfg = KeemenaPreprocessing.PreprocessConfiguration(tokenizer_name=:whitespace)  # valid tokenizer
         
-        bundle = KeemenaPreprocessing.assemble_bundle(tokens, offsets, vocab, cfg)
+        bundle = KeemenaPreprocessing._Assemble.assemble_bundle(tokens, offsets, vocab, cfg)
         
         @test haskey(bundle.levels, :word)  # :whitespace maps to :word
         @test length(bundle.levels) == 1
@@ -45,22 +45,22 @@ end
         
         #test byte tokenizer
         cfg_byte = KeemenaPreprocessing.PreprocessConfiguration(tokenizer_name=:byte)
-        bundle_byte = KeemenaPreprocessing.assemble_bundle(tokens, offsets, vocab, cfg_byte)
+        bundle_byte = KeemenaPreprocessing._Assemble.assemble_bundle(tokens, offsets, vocab, cfg_byte)
         @test haskey(bundle_byte.levels, :byte)
         
         # test char tokenizer
         cfg_char = KeemenaPreprocessing.PreprocessConfiguration(tokenizer_name=:char)
-        bundle_char = KeemenaPreprocessing.assemble_bundle(tokens, offsets, vocab, cfg_char)
+        bundle_char = KeemenaPreprocessing._Assemble.assemble_bundle(tokens, offsets, vocab, cfg_char)
         @test haskey(bundle_char.levels, :character)
         
         #test unicode tokenizer (maps to :word)
         cfg_unicode = KeemenaPreprocessing.PreprocessConfiguration(tokenizer_name=:unicode)
-        bundle_unicode = KeemenaPreprocessing.assemble_bundle(tokens, offsets, vocab, cfg_unicode)
+        bundle_unicode = KeemenaPreprocessing._Assemble.assemble_bundle(tokens, offsets, vocab, cfg_unicode)
         @test haskey(bundle_unicode.levels, :word)
         
         # test whitespace tokenizer (maps to :word)
         cfg_whitespace = KeemenaPreprocessing.PreprocessConfiguration(tokenizer_name=:whitespace)
-        bundle_whitespace = KeemenaPreprocessing.assemble_bundle(tokens, offsets, vocab, cfg_whitespace)
+        bundle_whitespace = KeemenaPreprocessing._Assemble.assemble_bundle(tokens, offsets, vocab, cfg_whitespace)
         @test haskey(bundle_whitespace.levels, :word)
     end
 
@@ -71,7 +71,7 @@ end
         offsets = Dict(:document => [1, 6])
         cfg = KeemenaPreprocessing.PreprocessConfiguration(tokenizer_name=:byte)
         
-        bundle = KeemenaPreprocessing.assemble_bundle(byte_tokens, offsets, vocab, cfg)
+        bundle = KeemenaPreprocessing._Assemble.assemble_bundle(byte_tokens, offsets, vocab, cfg)
         
         corpus = bundle.levels[:byte].corpus
         @test corpus.token_ids == [2, 3, 4, 4, 5]  # H=2, e=3, l=4, l=4, o=5
@@ -83,7 +83,7 @@ end
         offsets = Dict(:document => [1, 4])
         cfg = KeemenaPreprocessing.PreprocessConfiguration(tokenizer_name=:whitespace)
         
-        bundle = KeemenaPreprocessing.assemble_bundle(tokens, offsets, vocab, cfg)
+        bundle = KeemenaPreprocessing._Assemble.assemble_bundle(tokens, offsets, vocab, cfg)
         
         corpus = bundle.levels[:word].corpus
         @test corpus.token_ids == [2, 1, 3]  # known=2, unknown=1(<UNK>), also_known=3
@@ -95,7 +95,7 @@ end
         offsets = Dict(:document => [1, 2])
         cfg = KeemenaPreprocessing.PreprocessConfiguration(tokenizer_name=:whitespace)
         
-        @test_throws ArgumentError KeemenaPreprocessing.assemble_bundle(tokens, offsets, vocab, cfg)
+        @test_throws ArgumentError KeemenaPreprocessing._Assemble.assemble_bundle(tokens, offsets, vocab, cfg)
     end
 
     @testset "All offset types" begin
@@ -113,7 +113,7 @@ end
         )
         cfg = KeemenaPreprocessing.PreprocessConfiguration(tokenizer_name=:whitespace)
         
-        bundle = KeemenaPreprocessing.assemble_bundle(tokens, offsets, vocab, cfg)
+        bundle = KeemenaPreprocessing._Assemble.assemble_bundle(tokens, offsets, vocab, cfg)
         
         corpus = bundle.levels[:word].corpus
         @test corpus.document_offsets == [1, 5]
@@ -131,7 +131,7 @@ end
         offsets = Dict{Symbol,Vector{Int}}()  #empty offsets
         cfg = KeemenaPreprocessing.PreprocessConfiguration(tokenizer_name=:whitespace)
         
-        bundle = KeemenaPreprocessing.assemble_bundle(tokens, offsets, vocab, cfg)
+        bundle = KeemenaPreprocessing._Assemble.assemble_bundle(tokens, offsets, vocab, cfg)
         
         corpus = bundle.levels[:word].corpus
         @test corpus.document_offsets == [1, 4]  # default: single document
@@ -143,7 +143,7 @@ end
         offsets = Dict(:document => [1, 1])  # Empty document
         cfg = KeemenaPreprocessing.PreprocessConfiguration(tokenizer_name=:whitespace)
         
-        bundle = KeemenaPreprocessing.assemble_bundle(tokens, offsets, vocab, cfg)
+        bundle = KeemenaPreprocessing._Assemble.assemble_bundle(tokens, offsets, vocab, cfg)
         
         corpus = bundle.levels[:word].corpus
         @test length(corpus.token_ids) == 0
@@ -156,7 +156,7 @@ end
         offsets = Dict(:document => [1, 3, 6])  # two documents
         cfg = KeemenaPreprocessing.PreprocessConfiguration(tokenizer_name=:whitespace)
         
-        bundle = KeemenaPreprocessing.assemble_bundle(tokens, offsets, vocab, cfg)
+        bundle = KeemenaPreprocessing._Assemble.assemble_bundle(tokens, offsets, vocab, cfg)
         
         corpus = bundle.levels[:word].corpus
         @test corpus.token_ids == [2, 3, 4, 5, 6]
@@ -171,7 +171,7 @@ end
         offsets = Dict(:document => [1, 3])
         cfg = KeemenaPreprocessing.PreprocessConfiguration(tokenizer_name=custom_tokenizer)
         
-        bundle = KeemenaPreprocessing.assemble_bundle(tokens, offsets, vocab, cfg)
+        bundle = KeemenaPreprocessing._Assemble.assemble_bundle(tokens, offsets, vocab, cfg)
         
         # should create level with function type name
         level_name = Symbol(typeof(custom_tokenizer))
@@ -188,7 +188,7 @@ end
             record_byte_offsets=false
         )
         
-        bundle = KeemenaPreprocessing.assemble_bundle(tokens, offsets, vocab, cfg)
+        bundle = KeemenaPreprocessing._Assemble.assemble_bundle(tokens, offsets, vocab, cfg)
         
         @test bundle.metadata isa KeemenaPreprocessing.PipelineMetadata
     end
@@ -199,7 +199,7 @@ end
         offsets = Dict(:document => [1, 3])
         cfg = KeemenaPreprocessing.PreprocessConfiguration(tokenizer_name=:whitespace)
         
-        bundle = KeemenaPreprocessing.assemble_bundle(tokens, offsets, vocab, cfg)
+        bundle = KeemenaPreprocessing._Assemble.assemble_bundle(tokens, offsets, vocab, cfg)
         
         # test bundle structure
         @test bundle isa KeemenaPreprocessing.PreprocessBundle
@@ -231,7 +231,7 @@ end
         
         for (tokenizer, expected_level) in test_cases
             cfg = KeemenaPreprocessing.PreprocessConfiguration(tokenizer_name=tokenizer)
-            bundle = KeemenaPreprocessing.assemble_bundle(tokens, offsets, vocab, cfg)
+            bundle = KeemenaPreprocessing._Assemble.assemble_bundle(tokens, offsets, vocab, cfg)
             @test haskey(bundle.levels, expected_level)
             @test length(bundle.levels) == 1
         end

@@ -301,18 +301,18 @@ end
         
         # basic cleaning with default settings
         docs = ["Hello World!", "  CAFÉ  ", "Visit https://example.com"]
-        result = clean_documents(docs, cfg)
+        result = KeemenaPreprocessing._Cleaning.clean_documents(docs, cfg)
         
         @test result[1] == "hello world"  # lowercase, remove punctuation
         @test result[2] == "cafe"         # lowercase, strip accents, trim
         @test result[3] == "visit url"   # lowercase, replace URLs, then remove punctuation (< > brackets removed)
         
         # empty documents
-        @test clean_documents(String[], cfg) == String[]
-        @test clean_documents([""], cfg) == [""]
+        @test KeemenaPreprocessing._Cleaning.clean_documents(String[], cfg) == String[]
+        @test KeemenaPreprocessing._Cleaning.clean_documents([""], cfg) == [""]
         
         # single document
-        @test clean_documents(["Hello World!"], cfg) == ["hello world"]
+        @test KeemenaPreprocessing._Cleaning.clean_documents(["Hello World!"], cfg) == ["hello world"]
     end
     
     @testset "Custom Configurations" begin        
@@ -325,7 +325,7 @@ end
         )
         
         docs = ["I have 5 apples and 10 oranges."]
-        result = KeemenaPreprocessing.clean_documents(docs, cfg_numbers)
+        result = KeemenaPreprocessing._Cleaning.clean_documents(docs, cfg_numbers)
         @test result[1] == "I have <NUM> apples and <NUM> oranges."
         
         #configuration with HTML stripping
@@ -349,7 +349,7 @@ end
         )
         
         docs = ["# Title\n\nThis is **bold** text with `code`."]
-        result = KeemenaPreprocessing.clean_documents(docs, cfg_md)
+        result = KeemenaPreprocessing._Cleaning.clean_documents(docs, cfg_md)
         @test result[1] == "TitleThis is bold text with <CODE>."
         
         #configuration with emoji handling
@@ -367,8 +367,8 @@ end
         )
         
         docs = ["Hello 😀 world 🌍!"]
-        result_remove = KeemenaPreprocessing.clean_documents(docs, cfg_emoji_remove)
-        result_sentinel = KeemenaPreprocessing.clean_documents(docs, cfg_emoji_sentinel)
+        result_remove = KeemenaPreprocessing._Cleaning.clean_documents(docs, cfg_emoji_remove)
+        result_sentinel = KeemenaPreprocessing._Cleaning.clean_documents(docs, cfg_emoji_sentinel)
         
         @test result_remove[1] == "Hello world !"
         @test result_sentinel[1] == "Hello <EMOJI> world <EMOJI>!"
@@ -382,7 +382,7 @@ end
         )
         
         docs = ["Helloooooo woooorld!!!"]
-        result = KeemenaPreprocessing.clean_documents(docs, cfg_squeeze)
+        result = KeemenaPreprocessing._Cleaning.clean_documents(docs, cfg_squeeze)
         @test result[1] == "Helloo woorld!!"
         
         # Configuration with confusables mapping
@@ -393,7 +393,7 @@ end
         )
         
         docs = ["Αpple with Cyrillic а"]
-        result = KeemenaPreprocessing.clean_documents(docs, cfg_confusables)
+        result = KeemenaPreprocessing._Cleaning.clean_documents(docs, cfg_confusables)
         @test result[1] == "Apple with Cyrillic a"
         
         # Configuration with Unicode punctuation mapping
@@ -404,7 +404,7 @@ end
         )
         
         docs = ["\"Hello\" and 'world' — with em-dash…"]
-        result = KeemenaPreprocessing.clean_documents(docs, cfg_unicode_punct)
+        result = KeemenaPreprocessing._Cleaning.clean_documents(docs, cfg_unicode_punct)
         @test result[1] == "\"Hello\" and 'world' - with em-dash..."
     end
 
@@ -449,7 +449,7 @@ end
         "Smart quotes" and em—dash…
         """
         
-        result = clean_documents([complex_doc], cfg_all)
+        result = KeemenaPreprocessing._Cleaning.clean_documents([complex_doc], cfg_all)
         cleaned = result[1]
         
         # Check that various transformations occurred (angle brackets removed by punctuation removal)
@@ -471,18 +471,18 @@ end
         
         #very long documents
         long_doc = "word " ^ 1000  # 1000 repetitions
-        result = clean_documents([long_doc], cfg)
+        result = KeemenaPreprocessing._Cleaning.clean_documents([long_doc], cfg)
         @test length(result) == 1
         @test occursin("word", result[1])
         
         #documents with only whitespace
         whitespace_docs = ["   ", "\t\n\r", ""]
-        result = clean_documents(whitespace_docs, cfg)
+        result = KeemenaPreprocessing._Cleaning.clean_documents(whitespace_docs, cfg)
         @test all(isempty, result)
         
         #documents with only punctuation
         punct_docs = ["!!!", "???", "..."]
-        result = clean_documents(punct_docs, cfg)
+        result = KeemenaPreprocessing._Cleaning.clean_documents(punct_docs, cfg)
         @test all(isempty, result)
         
         #mixed content types
@@ -496,7 +496,7 @@ end
             "😀 Emoji content 🌍"
         ]
         
-        result = clean_documents(mixed_docs, cfg)
+        result = KeemenaPreprocessing._Cleaning.clean_documents(mixed_docs, cfg)
         @test length(result) == length(mixed_docs)
         @test all(s -> isa(s, String), result)
     end
@@ -512,7 +512,7 @@ end
         )
         
         docs = ["Line 1\n\nLine 2\n   Line 3   "]
-        result = KeemenaPreprocessing.clean_documents(docs, cfg_preserve_nl)
+        result = KeemenaPreprocessing._Cleaning.clean_documents(docs, cfg_preserve_nl)
         @test result[1] == "Line 1Line 2 Line 3" 
         
         #don't preserve newlines
@@ -523,7 +523,7 @@ end
             remove_punctuation=false
         )
         
-        result = KeemenaPreprocessing.clean_documents(docs, cfg_no_nl)
+        result = KeemenaPreprocessing._Cleaning.clean_documents(docs, cfg_no_nl)
         @test result[1] == "Line 1Line 2 Line 3"  
         
         #zero-width character removal
@@ -535,7 +535,7 @@ end
         )
         
         docs = ["Hello\u200B\u200C\u200D\uFEFFworld"]
-        result = KeemenaPreprocessing.clean_documents(docs, cfg_zero_width)
+        result = KeemenaPreprocessing._Cleaning.clean_documents(docs, cfg_zero_width)
         @test result[1] == "Helloworld" 
     end
 
@@ -566,9 +566,9 @@ end
             remove_punctuation=false
         )
         
-        result_nfc = KeemenaPreprocessing.clean_documents([decomposed_text], cfg_nfc)
-        result_nfd = KeemenaPreprocessing.clean_documents([accented_text], cfg_nfd)
-        result_none = KeemenaPreprocessing.clean_documents([accented_text], cfg_none)
+        result_nfc = KeemenaPreprocessing._Cleaning.clean_documents([decomposed_text], cfg_nfc)
+        result_nfd = KeemenaPreprocessing._Cleaning.clean_documents([accented_text], cfg_nfd)
+        result_none = KeemenaPreprocessing._Cleaning.clean_documents([accented_text], cfg_none)
         
         @test result_nfc[1] == accented_text  # normalize to composed form
         @test result_nfd[1] == decomposed_text  # normalize to decomposed form

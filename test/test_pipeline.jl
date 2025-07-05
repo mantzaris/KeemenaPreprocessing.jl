@@ -56,7 +56,7 @@
         @test isfile(save_path)
         
         #verify saved bundle can be loaded
-        loaded_bundle = KeemenaPreprocessing.load_preprocess_bundle(save_path)
+        loaded_bundle = KeemenaPreprocessing._BundleIO.load_preprocess_bundle(save_path)
         @test loaded_bundle isa KeemenaPreprocessing.PreprocessBundle
         
         # clean up
@@ -137,8 +137,8 @@
         cfg  = KeemenaPreprocessing.PreprocessConfiguration(tokenizer_name = :whitespace)
 
         #
-        clean      = KeemenaPreprocessing.clean_documents(docs, cfg)
-        toks, _    = KeemenaPreprocessing.tokenize_and_segment(clean, cfg)
+        clean      = KeemenaPreprocessing._Cleaning.clean_documents(docs, cfg)
+        toks, _    = KeemenaPreprocessing._Tokenization.tokenize_and_segment(clean, cfg)
         ref_freqs  = Dict{String,Int}()
         foreach(t-> ref_freqs[t] = get(ref_freqs,t,0)+1, toks)
 
@@ -154,7 +154,7 @@
 
         #build vocabulary once (streaming path)
         freqs  = KeemenaPreprocessing._streaming_counts(big_docs, cfg; chunk_tokens = 20_000)
-        vocab  = KeemenaPreprocessing.build_vocabulary(freqs; cfg = cfg)
+        vocab  = KeemenaPreprocessing._Vocabulary.build_vocabulary(freqs; cfg = cfg)
 
         #preprocess corpus in small bundles
         chunk_tokens = 15_000                              # force many bundles

@@ -22,7 +22,7 @@
     end
 
     @testset "build_preprocessor basic functionality" begin
-        prep, train_bundle = KeemenaPreprocessing.build_preprocessor(train_docs)
+        prep, train_bundle = KeemenaPreprocessing._PreprocessorState.build_preprocessor(train_docs)
         
         # test return types
         @test prep isa KeemenaPreprocessing.Preprocessor
@@ -38,7 +38,7 @@
     end
 
     @testset "build_preprocessor with custom config" begin
-        prep, train_bundle = KeemenaPreprocessing.build_preprocessor(
+        prep, train_bundle = KeemenaPreprocessing._PreprocessorState.build_preprocessor(
             train_docs,
             tokenizer_name=:whitespace,
             lowercase=false,
@@ -53,10 +53,10 @@
 
     @testset "encode_corpus with Preprocessor" begin
         # build preprocessor from training data
-        prep, train_bundle = KeemenaPreprocessing.build_preprocessor(train_docs)
+        prep, train_bundle = KeemenaPreprocessing._PreprocessorState.build_preprocessor(train_docs)
         
         # encode new corpus
-        test_bundle = KeemenaPreprocessing.encode_corpus(prep, test_docs)
+        test_bundle = KeemenaPreprocessing._PreprocessorState.encode_corpus(prep, test_docs)
         
         # test result structure
         @test test_bundle isa KeemenaPreprocessing.PreprocessBundle
@@ -72,10 +72,10 @@
 
     @testset "encode_corpus with PreprocessBundle" begin
         # build initial bundle
-        prep, train_bundle = KeemenaPreprocessing.build_preprocessor(train_docs)
+        prep, train_bundle = KeemenaPreprocessing._PreprocessorState.build_preprocessor(train_docs)
         
         # encode using the bundle directly
-        test_bundle = KeemenaPreprocessing.encode_corpus(train_bundle, test_docs)
+        test_bundle = KeemenaPreprocessing._PreprocessorState.encode_corpus(train_bundle, test_docs)
         
         # test result structure
         @test test_bundle isa KeemenaPreprocessing.PreprocessBundle
@@ -93,7 +93,7 @@
         
         # encode documents with unknown words
         unknown_docs = ["hello unknown words here"]
-        test_bundle = KeemenaPreprocessing.encode_corpus(prep, unknown_docs)
+        test_bundle = KeemenaPreprocessing._PreprocessorState.encode_corpus(prep, unknown_docs)
         
         # should handle unknown tokens gracefully
         @test test_bundle isa KeemenaPreprocessing.PreprocessBundle
@@ -106,20 +106,20 @@
     end
 
     @testset "encode_corpus with save_to" begin
-        prep, train_bundle = KeemenaPreprocessing.build_preprocessor(train_docs)
+        prep, train_bundle = KeemenaPreprocessing._PreprocessorState.build_preprocessor(train_docs)
         
         # create temporary file path
         temp_dir = mktempdir()
         save_path = joinpath(temp_dir, "encoded_bundle.jld2")
         
         # encode and save
-        test_bundle = KeemenaPreprocessing.encode_corpus(prep, test_docs, save_to=save_path)
+        test_bundle = KeemenaPreprocessing._PreprocessorState.encode_corpus(prep, test_docs, save_to=save_path)
         
         # test that file was created
         @test isfile(save_path)
         
         #test that saved bundle can be loaded
-        loaded_bundle = KeemenaPreprocessing.load_preprocess_bundle(save_path)
+        loaded_bundle = KeemenaPreprocessing._BundleIO.load_preprocess_bundle(save_path)
         @test loaded_bundle isa KeemenaPreprocessing.PreprocessBundle
         @test haskey(loaded_bundle.levels, :word)
         
@@ -129,11 +129,11 @@
 
     @testset "Consistency between methods" begin
         #build preprocessor
-        prep, train_bundle = KeemenaPreprocessing.build_preprocessor(train_docs)
+        prep, train_bundle = KeemenaPreprocessing._PreprocessorState.build_preprocessor(train_docs)
         
         #encode using both methods
-        test_bundle1 = KeemenaPreprocessing.encode_corpus(prep, test_docs)
-        test_bundle2 = KeemenaPreprocessing.encode_corpus(train_bundle, test_docs)
+        test_bundle1 = KeemenaPreprocessing._PreprocessorState.encode_corpus(prep, test_docs)
+        test_bundle2 = KeemenaPreprocessing._PreprocessorState.encode_corpus(train_bundle, test_docs)
         
         #results should be equivalent
         @test test_bundle1.levels[:word].corpus.token_ids == test_bundle2.levels[:word].corpus.token_ids
@@ -141,22 +141,22 @@
     end
 
     @testset "Empty document handling" begin
-        prep, train_bundle = KeemenaPreprocessing.build_preprocessor(train_docs)
+        prep, train_bundle = KeemenaPreprocessing._PreprocessorState.build_preprocessor(train_docs)
         
         #test with empty documents
         empty_docs = ["", "  ", "normal text"]
-        test_bundle = KeemenaPreprocessing.encode_corpus(prep, empty_docs)
+        test_bundle = KeemenaPreprocessing._PreprocessorState.encode_corpus(prep, empty_docs)
         
         @test test_bundle isa KeemenaPreprocessing.PreprocessBundle
         @test haskey(test_bundle.levels, :word)
     end
 
     @testset "Single document encoding" begin
-        prep, train_bundle = KeemenaPreprocessing.build_preprocessor(train_docs)
+        prep, train_bundle = KeemenaPreprocessing._PreprocessorState.build_preprocessor(train_docs)
         
         # test with single document
         single_doc = ["Just one document"]
-        test_bundle = KeemenaPreprocessing.encode_corpus(prep, single_doc)
+        test_bundle = KeemenaPreprocessing._PreprocessorState.encode_corpus(prep, single_doc)
         
         @test test_bundle isa KeemenaPreprocessing.PreprocessBundle
         @test haskey(test_bundle.levels, :word)

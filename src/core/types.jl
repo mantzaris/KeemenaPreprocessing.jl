@@ -38,7 +38,7 @@ struct LevelBundle
             max_id > length(vocab.id_to_token_strings) &&
                 error("Corpus contains token ID $max_id but vocabulary has only $(length(vocab.id_to_token_strings)) tokens")
             minimum(corp.token_ids) < 1 &&
-                error("Token IDs must be ≥ 1")
+                error("Token IDs must be >= 1")
         end
         new(corp, vocab)
     end

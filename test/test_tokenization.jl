@@ -13,7 +13,7 @@ end
 #whitespace tokenizer - doc / sentence / word offsets
 @testset "tokenize_and_segment - whitespace defaults" begin
     cfg = KeemenaPreprocessing.PreprocessConfiguration()    # defaults: whitespace tok + all major offsets
-    tokens, offs = KeemenaPreprocessing.tokenize_and_segment(_DOC_SIMPLE, cfg)
+    tokens, offs = KeemenaPreprocessing._Tokenization.tokenize_and_segment(_DOC_SIMPLE, cfg)
 
     @test tokens == ["Hello", "world.", "Bye!"]   # preserves punctuation
     _assert_sentinel(offs[:document],  length(tokens))
@@ -30,7 +30,7 @@ end
 #paragraph offsets enabled
 @testset "tokenize_and_segment - paragraph split" begin
     cfg = KeemenaPreprocessing.PreprocessConfiguration(record_paragraph_offsets = true)
-    tokens, offs = KeemenaPreprocessing.tokenize_and_segment([_ASCII_PAR], cfg)
+    tokens, offs = KeemenaPreprocessing._Tokenization.tokenize_and_segment([_ASCII_PAR], cfg)
 
     #expected token stream "A", "B", "C"
     @test tokens == ["A", "B", "C"]
@@ -49,7 +49,7 @@ end
               record_sentence_offsets  = false,
               record_document_offsets  = false)
 
-    tokens, offs = KeemenaPreprocessing.tokenize_and_segment([_UNICODE_TXT], cfg)
+    tokens, offs = KeemenaPreprocessing._Tokenization.tokenize_and_segment([_UNICODE_TXT], cfg)
 
     #expected tokens given the current regex (no emoji, no punctuation)
     @test tokens == ["Café", "crème"]
@@ -66,7 +66,7 @@ end
                                   record_word_offsets      = false,
                                   record_sentence_offsets  = false,
                                   record_document_offsets  = false)
-    tokens, offs = KeemenaPreprocessing.tokenize_and_segment(["ab"], cfg)
+    tokens, offs = KeemenaPreprocessing._Tokenization.tokenize_and_segment(["ab"], cfg)
 
     @test tokens == ["a", "b"]
     @test haskey(offs, :character)
@@ -80,7 +80,7 @@ end
                                   record_byte_offsets       = true,
                                   record_sentence_offsets   = false,
                                   record_document_offsets   = false)
-    tokens, offs = KeemenaPreprocessing.tokenize_and_segment(["ABC"], cfg)
+    tokens, offs = KeemenaPreprocessing._Tokenization.tokenize_and_segment(["ABC"], cfg)
 
     @test tokens == UInt8.('A':'C')                # Vector{UInt8}
     _assert_sentinel(offs[:byte], 3)
@@ -90,7 +90,7 @@ end
 #preserve-empty-tokens == false filters empties
 @testset "tokenize_and_segment - empty token filtering" begin
     cfg = KeemenaPreprocessing.PreprocessConfiguration(preserve_empty_tokens = false)
-    tokens, _ = KeemenaPreprocessing.tokenize_and_segment(["a  b   c"], cfg)
+    tokens, _ = KeemenaPreprocessing._Tokenization.tokenize_and_segment(["a  b   c"], cfg)
     @test tokens == ["a", "b", "c"]                # no empty strings
 end
 
@@ -99,5 +99,5 @@ end
 @testset "tokenize_and_segment - invalid char-offset request" begin
     cfg = KeemenaPreprocessing.PreprocessConfiguration(tokenizer_name = :whitespace,
                                   record_character_offsets = true)
-    @test_throws ErrorException KeemenaPreprocessing.tokenize_and_segment(["abc"], cfg)
+    @test_throws ErrorException KeemenaPreprocessing._Tokenization.tokenize_and_segment(["abc"], cfg)
 end

@@ -13,7 +13,7 @@ function _create_test_bundle()
     offsets = Dict(:document => [1, 4])
     cfg = KeemenaPreprocessing.PreprocessConfiguration(tokenizer_name=:whitespace)
     
-    return assemble_bundle(tokens, offsets, vocab, cfg)
+    return KeemenaPreprocessing._Assemble.assemble_bundle(tokens, offsets, vocab, cfg)
 end
 
 @testset "_BundleIO Module Tests" begin
@@ -26,12 +26,12 @@ end
         test_path = joinpath(test_dir, "test_bundle.jld2")
         
         #test save
-        saved_path = KeemenaPreprocessing.save_preprocess_bundle(bundle, test_path)
+        saved_path = KeemenaPreprocessing._BundleIO.save_preprocess_bundle(bundle, test_path)
         @test saved_path == abspath(test_path)
         @test isfile(saved_path)
         
         # test load
-        loaded_bundle = KeemenaPreprocessing.load_preprocess_bundle(saved_path)
+        loaded_bundle = KeemenaPreprocessing._BundleIO.load_preprocess_bundle(saved_path)
         @test loaded_bundle isa KeemenaPreprocessing.PreprocessBundle
         
         # verify basic structure is preserved
@@ -45,17 +45,17 @@ end
         
         # test with compression
         compressed_path = joinpath(test_dir, "compressed.jld2")
-        KeemenaPreprocessing.save_preprocess_bundle(bundle, compressed_path, compress=true)
+        KeemenaPreprocessing._BundleIO.save_preprocess_bundle(bundle, compressed_path, compress=true)
         @test isfile(compressed_path)
         
         # test without compression
         uncompressed_path = joinpath(test_dir, "uncompressed.jld2")
-        KeemenaPreprocessing.save_preprocess_bundle(bundle, uncompressed_path, compress=false)
+        KeemenaPreprocessing._BundleIO.save_preprocess_bundle(bundle, uncompressed_path, compress=false)
         @test isfile(uncompressed_path)
         
         #both should load successfully
-        loaded1 = KeemenaPreprocessing.load_preprocess_bundle(compressed_path)
-        loaded2 = KeemenaPreprocessing.load_preprocess_bundle(uncompressed_path)
+        loaded1 = KeemenaPreprocessing._BundleIO.load_preprocess_bundle(compressed_path)
+        loaded2 = KeemenaPreprocessing._BundleIO.load_preprocess_bundle(uncompressed_path)
         @test loaded1.levels[:word].corpus.token_ids == loaded2.levels[:word].corpus.token_ids
     end
 
@@ -64,7 +64,7 @@ end
         nested_path = joinpath(test_dir, "nested", "deep", "bundle.jld2")
         
         #should create directories automatically
-        saved_path = KeemenaPreprocessing.save_preprocess_bundle(bundle, nested_path)
+        saved_path = KeemenaPreprocessing._BundleIO.save_preprocess_bundle(bundle, nested_path)
         @test isfile(saved_path)
         @test isdir(dirname(saved_path))
     end
@@ -74,18 +74,18 @@ end
         test_path = joinpath(test_dir, "format_test.jld2")
         
         # valid format should work
-        @test_nowarn KeemenaPreprocessing.save_preprocess_bundle(bundle, test_path, format=:jld2)
+        @test_nowarn KeemenaPreprocessing._BundleIO.save_preprocess_bundle(bundle, test_path, format=:jld2)
         
         # invalid format should error
-        @test_throws ErrorException KeemenaPreprocessing.save_preprocess_bundle(bundle, test_path, format=:invalid)
-        @test_throws ErrorException KeemenaPreprocessing.load_preprocess_bundle(test_path, format=:invalid)
+        @test_throws ErrorException KeemenaPreprocessing._BundleIO.save_preprocess_bundle(bundle, test_path, format=:invalid)
+        @test_throws ErrorException KeemenaPreprocessing._BundleIO.load_preprocess_bundle(test_path, format=:invalid)
     end
 
     @testset "File existence validation" begin
         nonexistent_path = joinpath(test_dir, "does_not_exist.jld2")
         
         #loading non-existent file should error
-        @test_throws ArgumentError KeemenaPreprocessing.load_preprocess_bundle(nonexistent_path)
+        @test_throws ArgumentError KeemenaPreprocessing._BundleIO.load_preprocess_bundle(nonexistent_path)
     end
 
     @testset "Version handling" begin
@@ -93,7 +93,7 @@ end
         test_path = joinpath(test_dir, "version_test.jld2")
         
         # save bundle
-        KeemenaPreprocessing.save_preprocess_bundle(bundle, test_path)
+        KeemenaPreprocessing._BundleIO.save_preprocess_bundle(bundle, test_path)
         
         #check that version information is stored
         jldopen(test_path, "r") do file
@@ -103,7 +103,7 @@ end
         end
         
         # should load without issues
-        @test_nowarn KeemenaPreprocessing.load_preprocess_bundle(test_path)
+        @test_nowarn KeemenaPreprocessing._BundleIO.load_preprocess_bundle(test_path)
     end
 
     @testset "Round-trip consistency" begin
@@ -125,7 +125,7 @@ end
             record_word_offsets=true
         )
         
-        original_bundle = KeemenaPreprocessing.assemble_bundle(tokens, offsets, vocab, cfg)
+        original_bundle = KeemenaPreprocessing._Assemble.assemble_bundle(tokens, offsets, vocab, cfg)
         test_path = joinpath(test_dir, "roundtrip.jld2")
         
         # save and load
@@ -150,8 +150,8 @@ end
         @test isfile(saved_path)
         
         # should be able to load with both relative and absolute paths
-        @test_nowarn KeemenaPreprocessing.load_preprocess_bundle(relative_path)
-        @test_nowarn KeemenaPreprocessing.load_preprocess_bundle(saved_path)
+        @test_nowarn KeemenaPreprocessing._BundleIO.load_preprocess_bundle(relative_path)
+        @test_nowarn KeemenaPreprocessing._BundleIO.load_preprocess_bundle(saved_path)
         
         # clean up
         rm(saved_path)

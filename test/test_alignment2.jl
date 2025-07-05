@@ -49,8 +49,7 @@ end
         @test !haskey(bundle.levels, :byte)
         @test haskey(bundle.levels, :word)
         
-        # call the function
-        result = _ensure_lower_levels!(bundle)
+        result = KeemenaPreprocessing._Alignment._ensure_lower_levels!(bundle)
         
         # after calling _ensure_lower_levels! - check that levels exist
         @test haskey(result.levels, :character)
@@ -87,7 +86,7 @@ end
         original_char = bundle.levels[:character]
         original_byte = bundle.levels[:byte]
         
-        KeemenaPreprocessing._ensure_lower_levels!(bundle)
+        KeemenaPreprocessing._Alignment._ensure_lower_levels!(bundle)
         
         # verify no levels were modified (same object references)
         @test bundle.levels[:character] === original_char
@@ -101,7 +100,7 @@ end
         
         bundle = KeemenaPreprocessing.PreprocessBundle(Dict(:word => KeemenaPreprocessing.LevelBundle(word_corp, _vocab2(3))))
         
-        KeemenaPreprocessing._ensure_lower_levels!(bundle)
+        KeemenaPreprocessing._Alignment._ensure_lower_levels!(bundle)
         
         # should remain unchanged since offsets are missing
         @test !haskey(bundle.levels, :character)
@@ -122,7 +121,7 @@ end
         @test !haskey(bundle.levels, :character)
         @test haskey(bundle.levels, :byte)
         
-        KeemenaPreprocessing._ensure_lower_levels!(bundle)
+        KeemenaPreprocessing._Alignment._ensure_lower_levels!(bundle)
         
         @test haskey(bundle.levels, :character)
         @test haskey(bundle.levels, :byte)
@@ -147,7 +146,7 @@ end
         # clear alignments to test build_alignments!
         empty!(bund.alignments)
         
-        KeemenaPreprocessing.build_alignments!(bund)
+        KeemenaPreprocessing._Alignment.build_alignments!(bund)
         
         # should create all expected alignments
         @test length(bund.alignments) == 3
@@ -169,7 +168,7 @@ end
         )
         bund = KeemenaPreprocessing.PreprocessBundle(lvls)
         
-        KeemenaPreprocessing.build_alignments!(bund)
+        KeemenaPreprocessing._Alignment.build_alignments!(bund)
         
         # should create only character-word alignment
         @test length(bund.alignments) == 1
@@ -188,12 +187,12 @@ end
         bund = KeemenaPreprocessing.PreprocessBundle(lvls)
         
         # first call
-        KeemenaPreprocessing.build_alignments!(bund)
+        KeemenaPreprocessing._Alignment.build_alignments!(bund)
         first_count = length(bund.alignments)
         first_keys = Set(keys(bund.alignments))
         
         # second call - should be no-op
-        KeemenaPreprocessing.build_alignments!(bund)
+        KeemenaPreprocessing._Alignment.build_alignments!(bund)
         
         @test length(bund.alignments) == first_count
         @test Set(keys(bund.alignments)) == first_keys
@@ -219,7 +218,7 @@ end
         @test !haskey(bundle.levels, :byte)
         @test isempty(bundle.alignments)
         
-        result = KeemenaPreprocessing.build_ensure_alignments!(bundle)
+        result = KeemenaPreprocessing._Alignment.build_ensure_alignments!(bundle)
         
         #after calling build_ensure_alignments!
         @test haskey(result.levels, :character)
@@ -242,7 +241,7 @@ end
         
         bundle = KeemenaPreprocessing.PreprocessBundle(Dict(:word => LevelBundle(word_corp, _vocab2(3))))
         
-        KeemenaPreprocessing.build_ensure_alignments!(bundle)
+        KeemenaPreprocessing._Alignment.build_ensure_alignments!(bundle)
         
         #should remain unchanged since no character/byte offsets available
         @test !haskey(bundle.levels, :character)
@@ -259,7 +258,7 @@ end
         
         bundle = KeemenaPreprocessing.PreprocessBundle(Dict(:word => KeemenaPreprocessing.LevelBundle(word_corp, _vocab2(3))))
         
-        KeemenaPreprocessing.build_ensure_alignments!(bundle)
+        KeemenaPreprocessing._Alignment.build_ensure_alignments!(bundle)
         
         #should create both character and byte levels and all alignments
         @test haskey(bundle.levels, :character)
@@ -282,7 +281,7 @@ end
         #clear alignments to test build_ensure_alignments!
         empty!(bund.alignments)
         
-        KeemenaPreprocessing.build_ensure_alignments!(bund)
+        KeemenaPreprocessing._Alignment.build_ensure_alignments!(bund)
         
         #sShould create all expected alignments
         @test length(bund.alignments) == 3
@@ -312,7 +311,7 @@ end
         
         bundle = KeemenaPreprocessing.PreprocessBundle(Dict(:word => LevelBundle(word_corp_single, _vocab2(1))))
         
-        KeemenaPreprocessing.build_ensure_alignments!(bundle)
+        KeemenaPreprocessing._Alignment.build_ensure_alignments!(bundle)
         
         @test haskey(bundle.levels, :character)
         @test haskey(bundle.levels, :byte)
@@ -334,12 +333,12 @@ end
         bundle = KeemenaPreprocessing.PreprocessBundle(Dict(:word => LevelBundle(word_corp, _vocab2(3))))
         
         # first call
-        KeemenaPreprocessing.build_ensure_alignments!(bundle)
+        KeemenaPreprocessing._Alignment.build_ensure_alignments!(bundle)
         first_levels = Set(keys(bundle.levels))
         first_alignments = Set(keys(bundle.alignments))
         
         # second call - should be no-op
-        KeemenaPreprocessing.build_ensure_alignments!(bundle)
+        KeemenaPreprocessing._Alignment.build_ensure_alignments!(bundle)
         second_levels = Set(keys(bundle.levels))
         second_alignments = Set(keys(bundle.alignments))
         
@@ -358,7 +357,7 @@ end
         bundle = KeemenaPreprocessing.PreprocessBundle(Dict(:word => LevelBundle(large_corp, _vocab2(10))))
         
         # should complete without errors
-        @test_nowarn KeemenaPreprocessing.build_ensure_alignments!(bundle)
+        @test_nowarn KeemenaPreprocessing._Alignment.build_ensure_alignments!(bundle)
         
         @test haskey(bundle.levels, :character)
         @test haskey(bundle.levels, :byte)
@@ -400,7 +399,7 @@ end
         )
         bund = KeemenaPreprocessing.PreprocessBundle(lvls)
         
-        KeemenaPreprocessing.build_alignments!(bund)
+        KeemenaPreprocessing._Alignment.build_alignments!(bund)
         
         # should create only character-word alignment
         @test length(bund.alignments) == 1
