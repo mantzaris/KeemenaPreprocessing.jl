@@ -213,26 +213,27 @@ function replace_urls_emails(text::AbstractString;
                              mail_sentinel::AbstractString = "<EMAIL>",
                              keep_scheme::Bool = false)::String
 
-    #regexes are compiled once at method definition
     URL_RE  = r"(https?://)?[A-Za-z0-9\-_]+(\.[A-Za-z0-9\-_]+)+(/[^\s]*)?"
     MAIL_RE = r"[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Za-z]{2,}"
 
-    #step 1 - e-mails (do first so mail-like URLs aren't double-substituted)
-    stripped = replace(text, MAIL_RE => mail_sentinel)
+    # Step 1 - e-mails (do first so mail-like URLs aren't double-substituted)
+    out = replace(text, MAIL_RE => mail_sentinel)
 
-    #step 2 - URLs
+    # Step 2 - URLs
     if keep_scheme
-        #preserve http:// or https://, replace the rest
-        stripped = replace(stripped, URL_RE) do m
-            startswith(m.match, "http") ? m.match[1:findfirst("://", m.match).stop] * url_sentinel :
-                                          url_sentinel
-        end
+        out = replace(out, URL_RE => function(matched_str)
+            # Re-match to get captures
+            m = match(URL_RE, matched_str)
+            scheme = m.captures[1]        # nothing or "http://"/"https://"
+            isnothing(scheme) ? url_sentinel : string(scheme, url_sentinel)
+        end)
     else
-        stripped = replace(stripped, URL_RE => url_sentinel)
+        out = replace(out, URL_RE => url_sentinel)
     end
 
-    return stripped
+    return out
 end
+
 
 
 if !@isdefined(_THOUSANDS_RE)
@@ -241,8 +242,15 @@ end
 if !@isdefined(_NUM_RE)
     const _NUM_RE       = r"[0-9]+"  # core digits
 end
-
-
+if !@isdefined(NUM_PAT)
+    const NUM_PAT       = r"""
+        (?:
+            (?P<sign>[+-])?                    # optional sign
+            (?P<int>\d+)                       # integer part
+            (?:\.(?P<frac>\d+))?               # optional .fraction
+        )
+    """x
+end
 
 @inline function replace_numbers(text::AbstractString;
         sentinel::AbstractString = "<NUM>",
@@ -255,24 +263,29 @@ end
     # 1 standardise separators if requested
     t = keep_commas ? replace(text, _THOUSANDS_RE => "") : text
 
-    # 2 main pass - a single replace with captured groups
-    NUM_PAT = r"""
-        (?:
-            (?P<sign>[+-])?                    # optional sign
-            (?P<int>\d+)                       # integer part
-            (?:\.(?P<frac>\d+))?               # optional .fraction
-        )
-    """x
-    return replace(t, NUM_PAT) do m
-        parts = IOBuffer()
-        keep_sign && !isempty(m["sign"]) && write(parts, m["sign"])
-        write(parts, sentinel)
-        if keep_decimal && !isempty(m["frac"])
-            write(parts, '.' * m["frac"])
-        end
-        String(take!(parts))
-    end
+    # 2 main pass - a single replace with captured groups    
+    return replace(t, NUM_PAT => function(matched_str)              # matched_str :: SubString
+            # Re-match to get named captures
+            rm = match(NUM_PAT, matched_str)
+            io = IOBuffer()
+
+            # sign
+            if keep_sign && !isnothing(rm["sign"]) && !isempty(rm["sign"])
+                write(io, rm["sign"])
+            end
+
+            # sentinel
+            write(io, sentinel)
+
+            # decimal part
+            if keep_decimal && !isnothing(rm["frac"]) && !isempty(rm["frac"])
+                write(io, '.' * rm["frac"])
+            end
+
+            String(take!(io))
+        end)
 end
+
 
 
 """
@@ -292,21 +305,21 @@ The function is dependency-free and UTF-8-safe.  It makes **no** attempt to
 preserve inline images, styles, or scripts; those are dropped entirely.
 """
 function strip_html(text::AbstractString; decode_entities::Bool = true)
-    # 1 — zap tags (`<tag attr="...">`, `</tag>`, `<!-- comments -->`)
+    #zap tags (`<tag attr="...">`, `</tag>`, `<!-- comments -->`)
     cleaned = replace(text, r"<[^>]*>" => "")
 
-    # 2 — optionally decode entities
+    # optionally decode entities
     if decode_entities
-        cleaned = replace(cleaned, Dict(
-            "&nbsp;" => "\u00A0",
-            "&lt;"   => "<",
-            "&gt;"   => ">",
-            "&amp;"  => "&",
-            "&quot;" => "\"",
-            "&apos;" => "'",
-            "&#39;"  => "'",
-            "&#34;"  => "\""
-        ))
+    
+        cleaned = replace(cleaned, "&nbsp;" => "\u00A0")
+        cleaned = replace(cleaned, "&lt;"   => "<")
+        cleaned = replace(cleaned, "&gt;"   => ">")
+        cleaned = replace(cleaned, "&amp;"  => "&")
+        cleaned = replace(cleaned, "&quot;" => "\"")
+        cleaned = replace(cleaned, "&apos;" => "'")
+        cleaned = replace(cleaned, "&#39;"  => "'")
+        cleaned = replace(cleaned, "&#34;"  => "\"")
+        
     end
     return cleaned
 end
@@ -320,10 +333,10 @@ end
 Remove common Markdown formatting:
 
 * Fenced code blocks  ```lang ... ```  and inline code  `code`
-* Images  ![alt](url)  →  `alt`  (or sentinel if no alt)
-* Links   [text](url)  →  `text`
+* Images  ![alt](url)  ->  `alt`  (or sentinel if no alt)
+* Links   [text](url)  ->  `text`
 * Bold / italic markers **text**, __text__, *text*, _text_
-* Headings (#, ##, …), horizontal rules, blockquotes, list bullets
+* Headings (#, ##, ...), horizontal rules, blockquotes, list bullets
 
 If `preserve_code = true`, code blocks/inlines are replaced by `code_sentinel`;
 otherwise they are removed entirely.
@@ -333,22 +346,34 @@ function strip_markdown(text::AbstractString;
                         code_sentinel::AbstractString = "<CODE>")::String
     t = text
 
-    # 1 — images ![alt](url)  -> alt or sentinel
-    t = replace(t, r"!\[([^\]]*)\]\([^\)]*\)" => s -> isempty(s.captures[1]) ? "" : s.captures[1])
+    #images ![alt](url)  -> alt or sentinel
+    t = replace(t, r"!\[([^\]]*)\]\([^\)]*\)" => function(matched_str)
+        #re-match to get captures
+        m = match(r"!\[([^\]]*)\]\([^\)]*\)", matched_str)
+        isempty(m.captures[1]) ? "" : m.captures[1]
+    end)
 
-    # 2 — links [text](url) -> text
-    t = replace(t, r"\[([^\]]+)\]\([^\)]*\)" => s -> s.captures[1])
+    #links [text](url) -> text
+    t = replace(t, r"\[([^\]]+)\]\([^\)]*\)" => function(matched_str)
+        #re-match to get captures
+        m = match(r"\[([^\]]+)\]\([^\)]*\)", matched_str)
+        m.captures[1]
+    end)
 
-    # 3 — fenced code blocks ``` ``` (lazy, non-greedy)
+    # fenced code blocks ``` ``` (lazy, non-greedy)
     fence_re = r"```[\s\S]*?```"
     t = preserve_code ? replace(t, fence_re => code_sentinel) : replace(t, fence_re => "")
 
-    # 4 — inline code `code`
+    # inline code `code`
     inline_re = r"`[^`]+`"
     t = preserve_code ? replace(t, inline_re => code_sentinel) : replace(t, inline_re => "")
 
-    # 5 — bold/italic, headings, hrules, blockquotes, lists
-    t = replace(t, r"[*_]{1,3}([^*_]+)[*_]{1,3}" => s -> s.captures[1])   # bold / italic
+    # bold/italic, headings, hrules, blockquotes, lists
+    t = replace(t, r"[*_]{1,3}([^*_]+)[*_]{1,3}" => function(matched_str)
+        #re-match to get captures
+        m = match(r"[*_]{1,3}([^*_]+)[*_]{1,3}", matched_str)
+        m.captures[1]
+    end)   # bold / italic
     t = replace(t, r"^#+\s*"m => "")          # headings
     t = replace(t, r"^>+\s*"m  => "")         # blockquotes
     t = replace(t, r"^[-*+]\s+"m => "")       # bullets
