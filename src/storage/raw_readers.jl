@@ -3,25 +3,38 @@
 const _EOL_RE = r"\r\n|\r" # normalise to LF
 
 
-function _load_sources(src)::Vector{String}
-    xs = isa(src, AbstractString) ? (src,) : src # promote scalar
-    docs = String[]
 
+function _load_sources(src)::Vector{String}
+    xs   = isa(src, AbstractString) ? (src,) : src  # promote scalar
+    docs = String[]
     for item in xs
         isa(item, AbstractString) || throw(ArgumentError(
             "unsupported element $(repr(item)) of type $(typeof(item))"))
 
-        if isfile(item)                     # real file
-            push!(docs, _read_file(item))           # may throw IOError
-        elseif isdir(item)                  #  directory - skip
+
+        is_path = false
+        if sizeof(item) <= 4_096        # cheap fast-path; most OS PATH_MAX <= 4096
+            try
+                is_path = isfile(item) || isdir(item)
+            catch e
+                if e isa IOError && (e.code == Base.UV_ENAMETOOLONG ||
+                                     e.code == Base.UV_ENOENT)
+                    is_path = false     # treat as raw text
+                else
+                    rethrow(e)          # genuine I/O failure on a real path
+                end
+            end
+        end
+
+        if is_path && isfile(item)
+            push!(docs, _read_file(item))          # may throw if unreadable
+        elseif is_path && isdir(item)
             @warn "Ignoring directory: $item"
-            continue                        
-        else                                # raw text (or non-existent path)
+        else                                       # raw text
             push!(docs, replace(item, _EOL_RE => "\n"))
         end
     end
     return docs
-
 end
 
 
