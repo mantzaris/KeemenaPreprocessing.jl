@@ -8,6 +8,65 @@ using ..KeemenaPreprocessing:  PreprocessConfiguration,
                                PipelineMetadata, PreprocessBundle
 
 
+"""
+    assemble_bundle(tokens, offsets, vocab, cfg) -> PreprocessBundle
+
+Convert the **token-level artefacts** produced by
+[`tokenize_and_segment`](@ref) into a minimal yet fully valid
+[`PreprocessBundle`](@ref).  The function
+
+1. Projects each token to its **integer id** using `vocab`; unknown strings are
+   mapped to the `:unk` special (throws if the vocabulary lacks one).
+2. Packs the id sequence together with the requested offset tables into a
+   [`Corpus`](@ref).
+3. Wraps that corpus and its vocabulary in a [`LevelBundle`](@ref) whose key is
+   inferred from `cfg.tokenizer_name`:
+
+   | `tokenizer_name` value | level symbol stored |
+   |------------------------|---------------------|
+   | `:byte`                | `:byte`             |
+   | `:char`                | `:character`        |
+   | `:unicode`, `:whitespace` | `:word`        |
+   | `Function`             | `Symbol(typeof(fn))`|
+   | any other `Symbol`     | same symbol         |
+
+4. Builds a default [`PipelineMetadata`](@ref) header
+   (`PipelineMetadata(cfg, v"1.0.0")`).
+5. Returns a `PreprocessBundle` containing *exactly one* level, empty
+   `alignments`, and `extras = nothing`.
+
+### Arguments
+| name | type | description |
+|------|------|-------------|
+| `tokens`  | `Vector{<:Union{String,UInt8}}` | Flattened token stream. |
+| `offsets` | `Dict{Symbol,Vector{Int}}` | Start indices for each recorded level (as returned by `tokenize_and_segment`). |
+| `vocab`   | [`Vocabulary`](@ref) | Token <-> id mapping (must contain `:unk`). |
+| `cfg`     | [`PreprocessConfiguration`](@ref) | Determines the level key and special-token requirements. |
+
+### Returns
+`PreprocessBundle` with
+
+```julia
+bundle.levels       == Dict(level_key => LevelBundle(corpus, vocab))
+bundle.metadata     == PipelineMetadata(cfg, v"1.0.0")
+bundle.alignments   == Dict{Tuple{Symbol,Symbol},CrossMap}()   # empty
+bundle.extras       == nothing
+```
+
+### Errors
+* Throws `ArgumentError` if `vocab` lacks the `:unk` special.
+* Propagates any error raised by the inner constructors of `Corpus` or
+  `LevelBundle` (e.g. offset inconsistencies).
+
+### Example
+```julia
+tokens, offs = tokenize_and_segment(docs, cfg)
+vocab         = build_vocabulary(tokens; cfg = cfg)
+bund          = assemble_bundle(tokens, offs, vocab, cfg)
+
+@info keys(bund.levels)  # (:word,) for whitespace tokenizer
+```
+"""
 function assemble_bundle(tokens::AbstractVector,
                          offsets::Dict{Symbol,Vector{Int}},
                          vocab::Vocabulary,

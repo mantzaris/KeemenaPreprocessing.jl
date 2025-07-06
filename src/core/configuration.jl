@@ -1,4 +1,6 @@
 
+
+
 struct PreprocessConfiguration
 
     # Cleaning
@@ -59,9 +61,110 @@ struct PreprocessConfiguration
 end
 
 
+"""
+`TOKENIZERS`
+
+A constant `Tuple{Symbol}` listing the names of built-in tokenizers that can be
+passed to the `tokenizer_name` keyword of [`PreprocessConfiguration`](@ref).
+
+Currently supported values are
+
+* `:whitespace` - split on Unicode whitespace;
+* `:unicode`    - iterate user-perceived graphemes (`eachgrapheme`);
+* `:byte`       - treat the text as raw bytes (byte-level models);
+* `:char`       - split on individual UTF-8 code units.
+
+You may also supply any **callable** that implements
+`mytokens = f(string)` in place of one of these symbols.
+"""
 const TOKENIZERS = (:whitespace, :unicode, :byte, :char)
 
 
+
+"""
+    PreprocessConfiguration(; kwargs...) -> PreprocessConfiguration
+
+Create a fully-specified preprocessing configuration.
+
+All keyword arguments are optional; sensible defaults are provided so that
+`cfg = PreprocessConfiguration()` already yields a working pipeline.  Options
+are grouped below by the stage they affect.
+
+# Cleaning stage toggles
+| keyword | default | purpose |
+|---------|---------|---------|
+| `lowercase` | `true` | Convert letters to lower-case. |
+| `strip_accents` | `true` | Remove combining accent marks. |
+| `remove_control_characters` | `true` | Drop Unicode Cc/Cf code-points. |
+| `remove_punctuation` | `true` | Strip punctuation & symbol characters. |
+| `normalise_whitespace` | `true` | Collapse consecutive whitespace. |
+| `remove_zero_width_chars` | `true` | Remove zero-width joiners, etc. |
+| `preserve_newlines` | `true` | Keep explicit line breaks. |
+| `collapse_spaces` | `true` | Collapse runs of spaces/tabs. |
+| `trim_edges` | `true` | Strip leading/trailing whitespace. |
+
+## URL, e-mail & numbers
+| keyword | default | purpose |
+|---------|---------|---------|
+| `replace_urls`  | `true`  | Replace URLs with `url_sentinel`. |
+| `replace_emails`| `true`  | Replace e-mails with `mail_sentinel`. |
+| `keep_url_scheme` | `false` | Preserve `http://` / `https://` prefix. |
+| `url_sentinel` | `"<URL>"` | Token inserted for each URL. |
+| `mail_sentinel` | `"<EMAIL>"` | Token inserted for each e-mail. |
+| `replace_numbers` | `false` | Replace numbers with `number_sentinel`. |
+| `number_sentinel` | `"<NUM>"` | Token used when replacing numbers. |
+| `keep_number_decimal` | `false` | Preserve decimal part. |
+| `keep_number_sign`    | `false` | Preserve ± sign. |
+| `keep_number_commas`  | `false` | Preserve thousands separators. |
+
+## Mark-up & HTML
+| keyword | default | purpose |
+|---------|---------|---------|
+| `strip_markdown`  | `false` | Remove Markdown formatting. |
+| `preserve_md_code`| `true`  | Keep fenced/inline code while stripping. |
+| `strip_html_tags` | `false` | Remove HTML/XML tags. |
+| `html_entity_decode` | `true` | Decode `&amp;`, `&quot;`, etc. |
+
+## Emoji & Unicode
+| keyword | default | purpose |
+|---------|---------|---------|
+| `emoji_handling` | `:keep` | `:keep`, `:remove`, or `:sentinel`. |
+| `emoji_sentinel` | `"<EMOJI>"` | Used when `emoji_handling == :sentinel`. |
+| `squeeze_repeat_chars` | `false` | Limit repeated character runs. |
+| `max_char_run`    | `3` | Maximum run length when squeezing. |
+| `map_confusables` | `false` | Map visually-confusable chars. |
+| `unicode_normalisation_form` | `:none` | `:NFC`, `:NFD`, `:NFKC`, `:NFKD`, or `:none`. |
+| `map_unicode_punctuation` | `false` | Replace Unicode punctuation with ASCII. |
+
+# Tokenisation
+| keyword | default | purpose |
+|---------|---------|---------|
+| `tokenizer_name` | `:whitespace` | One of `TOKENIZERS` **or** a callable. |
+| `preserve_empty_tokens` | `false` | Keep zero-length tokens. |
+
+# Vocabulary construction
+| keyword | default | purpose |
+|---------|---------|---------|
+| `minimum_token_frequency` | `1` | Discard rarer tokens / map to `<UNK>`. |
+| `special_tokens` | `Dict(:unk=>"<UNK>", :pad=>"<PAD>")` | Role ⇒ literal mapping. |
+
+# Offset recording
+| keyword | default | purpose |
+|---------|---------|---------|
+| `record_byte_offsets`      | `false` | Record byte-level spans. |
+| `record_character_offsets` | `false` | Record Unicode-char offsets. |
+| `record_word_offsets`      | `true`  | Record word offsets. |
+| `record_sentence_offsets`  | `true`  | Record sentence offsets. |
+| `record_paragraph_offsets` | `false` | Record paragraph offsets (forces `preserve_newlines = true`). |
+| `record_document_offsets`  | `true`  | Record document offsets. |
+
+# Returns
+A fully-initialised `PreprocessConfiguration` instance.  Invalid combinations
+raise `AssertionError` (e.g. unsupported tokenizer) and certain settings emit
+warnings when they imply other flags (e.g. paragraph offsets -> `preserve_newlines`).
+
+See also: [`TOKENIZERS`](@ref) and [`byte_cfg`](@ref) for a pre-canned byte-level configuration.
+"""
 function PreprocessConfiguration(;  # all kwargs are optional
         lowercase                 = true,
         strip_accents             = true,
@@ -163,6 +266,28 @@ function PreprocessConfiguration(;  # all kwargs are optional
 end
 
 
+"""
+    byte_cfg(; kwargs...) -> PreprocessConfiguration
+
+Shorthand constructor that returns a [`PreprocessConfiguration`](@ref)
+pre-configured for **byte-level** tokenisation.
+
+The wrapper fixes the following fields
+
+* `tokenizer_name = :byte`
+* `record_byte_offsets      = true`
+* `record_character_offsets = false`
+* `record_word_offsets      = false`
+
+while forwarding every other keyword argument to `PreprocessConfiguration`.
+Use it when building byte-level language-model corpora but still needing the
+full flexibility to tweak cleaning, vocabulary, or segmentation options:
+
+```julia
+cfg = byte_cfg(strip_html_tags = true,
+               minimum_token_frequency = 5)
+```
+"""
 byte_cfg(; kwargs...) = PreprocessConfiguration(
     tokenizer_name = :byte,
     record_byte_offsets = true,

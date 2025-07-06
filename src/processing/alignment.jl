@@ -6,6 +6,59 @@ using ..KeemenaPreprocessing: Corpus, CrossMap, PreprocessBundle, LevelBundle, g
 _require_offsets(name, v) =
     (v isa AbstractVector && length(v) >= 2) ? v : throw(ArgumentError("Corpus is missing valid $name offsets (need >= 2 entries)."))
 
+
+"""
+    alignment_byte_to_word(byte_c, word_c) -> CrossMap
+
+Construct a byte → word [`CrossMap`](@ref) that projects each **byte index**
+in `byte_c` onto the **word index** in `word_c` that contains it.
+
+### Preconditions
+* `byte_c` **must** have a **non-`nothing`** `byte_offsets` vector  
+  (checked via the private helper `_require_offsets`).
+* `word_c` **must** have a **non-`nothing`** `word_offsets` vector.
+* Both corpora must span the **same token range**  
+  `byte_offsets[end] == word_offsets[end]`; otherwise an
+  `ArgumentError` is thrown.
+
+### Arguments
+| name     | type      | description |
+|----------|-----------|-------------|
+| `byte_c` | `Corpus`  | Corpus tokenised at the **byte** level. |
+| `word_c` | `Corpus`  | Corpus tokenised at the **word** level. |
+
+### Algorithm
+1. Retrieve the sentinel-terminated offset vectors  
+   `bo = byte_c.byte_offsets` and `wo = word_c.word_offsets`.
+2. Allocate `b2w :: Vector{Int}(undef, n_bytes)` where
+   `n_bytes = length(bo) - 1`.
+3. For each word index `w_idx` fill the slice
+   `wo[w_idx] : wo[w_idx+1]-1` with `w_idx`, thereby assigning every byte
+   position to the word that begins at `wo[w_idx]`.
+4. Return `CrossMap(:byte, :word, b2w)`.
+
+The output vector has length **`n_bytes`** (no sentinel) because every byte
+token receives one word identifier.
+
+### Returns
+A `CrossMap` whose fields are:
+
+```julia
+source_level      == :byte
+destination_level == :word
+alignment         :: Vector{Int}  # length = n_bytes
+```
+
+### Errors
+* `ArgumentError` if either corpus lacks the necessary offsets.
+* `ArgumentError` when the overall spans differ.
+
+### Example
+```julia
+b2w = alignment_byte_to_word(byte_corpus, word_corpus)
+word_index_of_42nd_byte = b2w.alignment[42]
+```
+"""
 function alignment_byte_to_word(byte_c::Corpus, word_c::Corpus)::CrossMap
     bo = _require_offsets(:byte, byte_c.byte_offsets)
     wo = _require_offsets(:word, word_c.word_offsets)

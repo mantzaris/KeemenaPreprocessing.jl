@@ -422,14 +422,65 @@ end
 
 
 
-# main public function
 """
-    clean_documents(docs, cfg) -> Vector{String}
+    clean_documents(docs, cfg) → Vector{String}
 
-Apply the five cleaning toggles in `cfg` to each document string **in-place**.
+Apply the **text-cleaning stage** of the Keemena pipeline to every document in
+`docs` according to the options held in `cfg`
+([`PreprocessConfiguration`](@ref)).  
+The returned vector has the *same length and order* as `docs`.
 
-The returned vector re-uses the original strings (no re-allocation unless a
-transformation occurs).
+### Arguments
+| name | type | description |
+|------|------|-------------|
+| `docs` | `Vector{String}` | Raw, unprocessed documents. |
+| `cfg`  | `PreprocessConfiguration` | Cleaning directives (lower-casing, URL replacement, emoji handling, …). |
+
+### Processing steps
+The function runs a *fixed* sequence of transformations, each guarded by the
+corresponding flag in `cfg`:
+
+1. **Unicode normalisation** `normalize_unicode` (`unicode_normalisation_form`).
+2. **HTML stripping** `strip_html` + entity decoding (`strip_html_tags`,
+   `html_entity_decode`).
+3. **Markdown stripping** `strip_markdown` (`strip_markdown`,
+   `preserve_md_code`).
+4. **Repeated-character squeezing** `squeeze_char_runs`
+   (`squeeze_repeat_chars`, `max_char_run`).
+5. **Unicode confusable mapping** `normalize_confusables`
+   (`map_confusables`).
+6. **Emoji handling** `_rewrite_emojis` (`emoji_handling`, `emoji_sentinel`).
+7. **Number replacement** `replace_numbers` (`replace_numbers`, plus the
+   `keep_*` sub-flags and `number_sentinel`).
+8. **Unicode-to-ASCII punctuation mapping** `map_unicode_punctuation`
+   (`map_unicode_punctuation`).
+9. **URL / e-mail replacement** `replace_urls_emails`
+   (`replace_urls`, `replace_emails`, `url_sentinel`, `mail_sentinel`,
+   `keep_url_scheme`).
+10. **Lower-casing** `lowercase` (`lowercase`).
+11. **Accent stripping** `_strip_accents` (`strip_accents`).
+12. **Control-character removal** regex replace with `_CTRL_RE`
+    (`remove_control_characters`).
+13. **Whitespace normalisation** `normalize_whitespace`
+    (`normalise_whitespace`, `remove_zero_width_chars`, `collapse_spaces`,
+    `trim_edges`, `preserve_newlines`).  Falls back to `strip` when only
+    `trim_edges` is requested.
+14. **Punctuation removal** regex replace with `_PUNCT_RE`
+    (`remove_punctuation`).
+
+Every transformation returns a *new* string; the original input remains
+unchanged.
+
+### Returns
+`Vector{String}` — cleaned documents ready for tokenisation.
+
+### Example
+```julia
+cfg  = PreprocessConfiguration(strip_html_tags = true,
+                               replace_urls    = true)
+clean = clean_documents(["Visit https://example.com!"], cfg)
+@info clean[1]   # -> "Visit <URL>"
+```
 """
 function clean_documents(docs::Vector{String}, cfg::PreprocessConfiguration)
     out = similar(docs)

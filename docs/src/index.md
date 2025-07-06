@@ -1,16 +1,16 @@
-```@meta
-CurrentModule = KeemenaPreprocessing
+
+
+# KeemenaPreprocessing.jl   :smile:
+
+
+**Clean → Tokenise/Segment → Bundle**
+
+
+```julia
+using KeemenaPreprocessing
+cfg    = PreprocessConfiguration()
+bundle = preprocess_corpus("data/alice.txt"; config = cfg)
 ```
 
-# KeemenaPreprocessing
-
-Documentation for [KeemenaPreprocessing](https://github.com/mantzaris/KeemenaPreprocessing.jl).
-
-```@index
-```
-
-```@autodocs
-Modules = [KeemenaPreprocessing]
-Order   = [:module, :type, :function]
-Private = false
-```
+* 👉 See the [Guides](guides/quickstart.md) for worked examples  
+* 👉 Full API in the [reference](api/index.md)

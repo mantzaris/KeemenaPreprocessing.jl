@@ -10,7 +10,7 @@ using Glob
 #core data types
 include(joinpath(@__DIR__, "core", "configuration.jl"))
 
-export PreprocessConfiguration, byte_cfg
+export PreprocessConfiguration, TOKENIZERS, byte_cfg
 
 
 include(joinpath(@__DIR__, "core", "types.jl"))
