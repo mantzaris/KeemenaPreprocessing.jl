@@ -219,31 +219,46 @@ function preprocess_corpus_streaming_full(srcs; kwargs...)
             acc_corp = accum[lvl]
             new_corp = lb.corpus
 
-            # 2a  token IDs
-            shift = length(acc_corp.token_ids)
+            # 2a token IDs
+            old_len = length(acc_corp.token_ids)
             append!(acc_corp.token_ids, new_corp.token_ids)
+            shift = old_len
 
-            # 2b  every offset vector (except :token_ids)
+            # 2b every offset field
             for fld in fieldnames(Corpus)
                 fld === :token_ids && continue
                 src_vec  = getfield(new_corp,  fld)
                 dest_vec = getfield(acc_corp,  fld)
                 (src_vec === nothing || dest_vec === nothing) && continue
 
-                # 1 remove dest's outdated sentinel
-                !isempty(dest_vec) && pop!(dest_vec)      # always HAS TO BE the last element
-
-                # 2 copy incoming offsets: skip leading sentinel and its trailing sentinel
-                first = (!isempty(src_vec) && src_vec[1] == 0) ? 2 : 1
-                last  = length(src_vec) - 1                    # drop src trailing sentinel
-
-                for i in first:last
-                    push!(dest_vec, src_vec[i] + shift)
+                # remove stale sentinel from dest (old_len OR old_len+1)
+                if !isempty(dest_vec)
+                    tail = dest_vec[end]
+                    if tail == old_len || tail == old_len + 1
+                        pop!(dest_vec)
+                    end
                 end
 
-                # 3 push fresh sentinel
-                push!(dest_vec, length(acc_corp.token_ids))
+                # copy shifted offsets (skip src head/tail sentinels when present)
+                first = (!isempty(src_vec) && src_vec[1] == 0) ? 2 : 1
+                src_tail = !isempty(src_vec) &&
+                        (src_vec[end] == length(new_corp.token_ids) ||
+                            src_vec[end] == length(new_corp.token_ids) + 1)
+                last  = src_tail ? length(src_vec) - 1 : length(src_vec)
+
+                if first ≤ last
+                    for i in first:last
+                        push!(dest_vec, src_vec[i] + shift)
+                    end
+                end
+
+                # push fresh sentinel only if this level uses them
+                uses_sentinel = (!isempty(dest_vec) && dest_vec[1] == 0) || src_tail
+                if uses_sentinel
+                    push!(dest_vec, length(acc_corp.token_ids))   # new ntok
+                end
             end
+
 
         end 
     end  
