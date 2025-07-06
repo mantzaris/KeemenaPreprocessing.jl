@@ -150,6 +150,122 @@ function _preprocess_core(sources,
 end
 
 
+
+
+
+"""
+    preprocess_corpus_streaming_chunks(srcs; kwargs...) -> 4Vector{PreprocessBundle}
+
+Run the streaming pipeline **once**, eagerly consume the channel,
+and return a `Vector` whose `i`-th entry is the `PreprocessBundle`
+covering chunk *i*.
+
+Identical keyword interface to `preprocess_corpus_streaming`;
+all arguments are forwarded unchanged.
+
+Use when you want chunked artefacts (e.g. sharding a
+massive corpus across GPUs) **but** prefer a materialised vector
+instead of an explicit `Channel`.
+
+```julia
+bundles = preprocess_corpus_streaming_chunks("wiki_xml/*";
+                                   chunk_tokens = 250_000,
+                                   strip_html_tags = true)
+@info "produced \$(length(bundles)) bundles"
+```
+"""
+preprocess_corpus_streaming_chunks(srcs; kwargs...) =
+collect(preprocess_corpus_streaming(srcs; kwargs...))
+
+
+"""
+preprocess_corpus_streaming_full(srcs; kwargs...) -> PreprocessBundle
+
+Run the streaming pipeline, merge every chunk on the fly,
+and return one single PreprocessBundle that spans the
+entire corpus.
+
+All keyword arguments are forwarded to preprocess_corpus_streaming.
+Throws when chunks were built with incompatible vocabularies
+
+```julia
+bund = preprocess_corpus_streaming_full(["en.txt", "de.txt"];
+                              minimum_token_frequency = 5)
+println("corpus length: ", length(get_token_ids(bund, :word)))
+```
+"""
+function preprocess_corpus_streaming_full(srcs; kwargs...)
+    ch = preprocess_corpus_streaming(srcs; kwargs...)
+
+    first_chunk = try
+        take!(ch)
+    catch e
+        isa(e, InvalidStateException) && error("Streaming produced no chunks")
+        rethrow(e)
+    end
+
+    base_cfg   = first_chunk.metadata.configuration
+    base_vocab = first_chunk.levels[:word].vocabulary      # assumes :word exists
+
+    # 1 accumulators (deep-copy so we don't mutate first_chunk)
+    accum = Dict{Symbol,Corpus}(lvl => deepcopy(lb.corpus) for (lvl,lb) in first_chunk.levels)
+
+    # 2 merge every subsequent chunk
+    for bund in ch 
+        bund.metadata.configuration != base_cfg   && error("Config mismatch")
+        bund.levels[:word].vocabulary !== base_vocab && error("Vocab mismatch")
+
+        for (lvl, lb) in bund.levels
+            acc_corp = accum[lvl]
+            new_corp = lb.corpus
+
+            # 2a  token IDs
+            shift = length(acc_corp.token_ids)
+            append!(acc_corp.token_ids, new_corp.token_ids)
+
+            # 2b  every offset vector (except :token_ids)
+            for fld in fieldnames(Corpus)
+                fld === :token_ids && continue
+                src_vec  = getfield(new_corp,  fld)
+                dest_vec = getfield(acc_corp,  fld)
+                (src_vec === nothing || dest_vec === nothing) && continue
+
+                # 1 remove dest's outdated sentinel
+                !isempty(dest_vec) && pop!(dest_vec)      # always HAS TO BE the last element
+
+                # 2 copy incoming offsets: skip leading sentinel and its trailing sentinel
+                first = (!isempty(src_vec) && src_vec[1] == 0) ? 2 : 1
+                last  = length(src_vec) - 1                    # drop src trailing sentinel
+
+                for i in first:last
+                    push!(dest_vec, src_vec[i] + shift)
+                end
+
+                # 3 push fresh sentinel
+                push!(dest_vec, length(acc_corp.token_ids))
+            end
+
+        end 
+    end  
+
+    # 3 - wrap into LevelBundles
+    merged_levels = Dict{Symbol,LevelBundle}(lvl => LevelBundle(corp, base_vocab)
+                                             for (lvl, corp) in accum)
+
+    merged = PreprocessBundle(merged_levels;
+                              metadata   = first_chunk.metadata,
+                              alignments = Dict{Tuple{Symbol,Symbol},CrossMap}())
+    build_ensure_alignments!(merged)
+    return merged
+end
+
+
+
+
+
+
+
+
 """
     preprocess_corpus_streaming(srcs;
                                 cfg           = PreprocessConfiguration(),
