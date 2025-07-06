@@ -223,8 +223,7 @@ function PreprocessConfiguration(;  # all kwargs are optional
     @assert (tokenizer_name in TOKENIZERS) || (tokenizer_name isa Function)  "tokenizer_name must be one of $(TOKENIZERS) or a callable."
 
     if record_paragraph_offsets && !preserve_newlines
-        @warn "record_paragraph_offsets=true but preserve_newlines=false; \
-               enabling preserve_newlines to keep paragraph boundaries."
+        @warn "record_paragraph_offsets=true but preserve_newlines=false; enabling preserve_newlines to keep paragraph boundaries."
         preserve_newlines = true
     end
 
