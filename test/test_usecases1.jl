@@ -60,3 +60,65 @@ end
     wc = KeemenaPreprocessing.get_corpus(bund, :word)
     @test wc.document_offsets[end] == length(wc.token_ids) + 1
 end
+
+
+
+
+
+@testset "preprocess_corpus_streaming_full - real texts (Alice + Time)" begin
+    mktempdir() do tmp
+        # 1 download the novels into the temp dir
+        alice_path = joinpath(tmp, "alice.txt")
+        time_path  = joinpath(tmp, "time_machine.txt")
+        Downloads.download(ALICE_URL, alice_path)
+        Downloads.download(TIME_URL,  time_path)
+
+        sources = [alice_path, time_path]
+
+        # 2 rich configuration (records word / sentence / document offsets)
+        cfg = KeemenaPreprocessing.PreprocessConfiguration(
+                  tokenizer_name          = :unicode,
+                  record_word_offsets     = true,
+                  record_sentence_offsets = true,
+                  record_document_offsets = true,
+              )
+
+        # 3 non-streaming baseline (ground truth for counts)
+        baseline   = KeemenaPreprocessing.preprocess_corpus(sources; config = cfg)
+        base_wc    = KeemenaPreprocessing.get_corpus(baseline, :word)
+        ntok_base  = length(base_wc.token_ids)
+        vocab_base = baseline.levels[:word].vocabulary
+
+        # 4 streaming-FULL helper under test
+        merged = KeemenaPreprocessing.preprocess_corpus_streaming_full(
+                     sources; cfg = cfg, chunk_tokens = 50_000)   # force >1 chunk
+
+        @test merged isa KeemenaPreprocessing.PreprocessBundle
+        @test merged.levels[:word].vocabulary.id_to_token_strings ==
+              vocab_base.id_to_token_strings                    # same lexicon
+        @test length(KeemenaPreprocessing.get_token_ids(merged, :word)) == ntok_base
+
+        # 5 offset and alignment sanity on merged bundle
+        wc = KeemenaPreprocessing.get_corpus(merged, :word)
+
+        # document offsets: 1-based, sorted, last >= n_tokens
+        @test wc.document_offsets[1] == 1
+        @test issorted(wc.document_offsets)
+        @test wc.document_offsets[end] >= ntok_base
+
+        # sentence offsets: same guarantees
+        @test issorted(wc.sentence_offsets)
+        @test wc.sentence_offsets[end] >= ntok_base
+
+        # quick bijection check on byte <-> word cross-map (if present)
+        if haskey(merged.alignments, (:byte, :word))
+            cmap = merged.alignments[(:byte, :word)]
+            src_ids = KeemenaPreprocessing.get_token_ids(merged, :byte)
+
+            for i in rand(1:length(src_ids), min(20, length(src_ids)))
+                w = cmap.forward[i]
+                @test cmap.backward[w] == i
+            end
+        end
+    end
+end
