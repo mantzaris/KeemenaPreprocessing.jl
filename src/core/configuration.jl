@@ -65,7 +65,7 @@ end
 `TOKENIZERS`
 
 A constant `Tuple{Symbol}` listing the names of built-in tokenizers that can be
-passed to the `tokenizer_name` keyword of [`PreprocessConfiguration`](@ref).
+passed to the `tokenizer_name` keyword of `PreprocessConfiguration`.
 
 Currently supported values are
 
@@ -163,7 +163,7 @@ A fully-initialised `PreprocessConfiguration` instance.  Invalid combinations
 raise `AssertionError` (e.g. unsupported tokenizer) and certain settings emit
 warnings when they imply other flags (e.g. paragraph offsets -> `preserve_newlines`).
 
-See also: [`TOKENIZERS`](@ref) and [`byte_cfg`](@ref) for a pre-canned byte-level configuration.
+See also: `TOKENIZERS` and [`byte_cfg`](@ref) for a pre-canned byte-level configuration.
 """
 function PreprocessConfiguration(;  # all kwargs are optional
         lowercase                 = true,

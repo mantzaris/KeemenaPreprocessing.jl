@@ -193,7 +193,7 @@ cfg   = PreprocessConfiguration(minimum_token_frequency = 2)
 
 vocab = build_vocabulary(freqs; cfg = cfg)
 
-@info "vocabulary size: $(length(vocab.id_to_token_strings))"
+@info "vocabulary size: \$(length(vocab.id_to_token_strings))"
 ```
 """
 function build_vocabulary(freqs::Dict{String,Int}; cfg::PreprocessConfiguration)

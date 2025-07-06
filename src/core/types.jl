@@ -43,7 +43,7 @@ Convenience constructor that returns a metadata header with
 * the current bundle **schema version** `v"1.0.0"`.
 
 Handy for rapid prototyping or unit tests when you do not need to customise the
-pipeline but still require a valid [`PipelineMetadata`](@ref) object.
+pipeline but still require a valid `PipelineMetadata` object.
 
 Identical to:
 
@@ -530,8 +530,8 @@ end
 """
     has_level(bundle, level) -> Bool
 
-Return `true` if the given [`PreprocessBundle`](@ref) contains a
-[`LevelBundle`](@ref) for the segmentation level `level`
+Return `true` if the given `PreprocessBundle` contains a
+`LevelBundle` for the segmentation level `level`
 (e.g. `:byte`, `:word`, `:sentence`); otherwise return `false`.
 
 # Arguments
@@ -550,8 +550,8 @@ has_level(bundle::PreprocessBundle, level::Symbol) = haskey(bundle.levels, level
 """
     get_level(bundle, level) → LevelBundle
 
-Fetch the [`LevelBundle`](@ref) associated with segmentation level `level`
-from a [`PreprocessBundle`](@ref).
+Fetch the `LevelBundle` associated with segmentation level `level`
+from a `PreprocessBundle`.
 
 # Arguments
 * `bundle::PreprocessBundle` — bundle returned by `preprocess_corpus`.
@@ -581,12 +581,12 @@ end
 """
     get_corpus(bundle, level) -> Corpus
 
-Retrieve the [`Corpus`](@ref) object for segmentation level `level`
-from a [`PreprocessBundle`](@ref).
+Retrieve the `Corpus` object for segmentation level `level`
+from a `PreprocessBundle`.
 
 This is equivalent to `get_level(bundle, level).corpus` and is provided
 as a convenience helper when you only need the sequence of token-ids and
-offset tables rather than the whole [`LevelBundle`](@ref).
+offset tables rather than the whole `LevelBundle`.
 
 # Arguments
 - `bundle::PreprocessBundle` - bundle produced by `preprocess_corpus`.
@@ -597,7 +597,7 @@ The `Corpus` stored in the requested level.
 
 # Errors
 Throws an `ArgumentError` if the level is not present in `bundle`
-(see [`get_level`](@ref) for details).
+(see `get_level` for details).
 
 # Example
 ```julia
@@ -617,8 +617,8 @@ get_corpus(bundle::PreprocessBundle, level::Symbol) = get_level(bundle, level).c
 """
     get_vocabulary(bundle, level) -> Vocabulary
 
-Return the [`Vocabulary`](@ref) associated with segmentation level `level`
-(eg `:byte`, `:word`, `:sentence`) from a given [`PreprocessBundle`](@ref)
+Return the `Vocabulary` associated with segmentation level `level`
+(eg `:byte`, `:word`, `:sentence`) from a given `PreprocessBundle`
 
 Effectively a shorthand for  
 `get_level(bundle, level).vocabulary`
@@ -632,7 +632,7 @@ The `Vocabulary` stored for `level`
 
 # Errors
 Raises an `ArgumentError` if `level` is not present in `bundle`
-(see [`get_level`](@ref) for details)
+(see `get_level` for details)
 
 # Example
 ```julia
@@ -647,12 +647,12 @@ get_vocabulary(bundle::PreprocessBundle, level::Symbol) = get_level(bundle, leve
     get_token_ids(bundle, level) -> Vector{Int}
 
 Return the vector of **token-ids** for segmentation level `level`
-contained in a [`PreprocessBundle`](@ref).
+contained in a `PreprocessBundle`.
 
 Identical to  
 `get_corpus(bundle, level).token_ids`,  
 but provided as a convenience helper when you only need the raw id
-sequence and not the full [`Corpus`](@ref) object.
+sequence and not the full `Corpus` object.
 
 # Arguments
 - `bundle::PreprocessBundle` - bundle produced by `preprocess_corpus`.
@@ -663,7 +663,7 @@ A `Vector{Int}` whose length equals the number of tokens at that level.
 
 # Errors
 Throws an `ArgumentError` if the requested level is absent
-(see [`get_level`](@ref) for details).
+(see `get_level` for details).
 
 # Example
 ```julia
@@ -677,12 +677,12 @@ get_token_ids(bundle::PreprocessBundle, level::Symbol) = get_corpus(bundle, leve
 """
     add_level!(bundle, level, lb) -> PreprocessBundle
 
-Mutating helper that inserts a new [`LevelBundle`](@ref) `lb` into
+Mutating helper that inserts a new `LevelBundle` `lb` into
 `bundle.levels` under key `level`.  The routine:
 
 1. **Guards against duplicates** - throws an error if `level` already exists.  
 2. **Validates** the offsets inside `lb.corpus` for consistency with
-   the supplied level via [`validate_offsets`](@ref).  
+   the supplied level via `validate_offsets`.  
 3. Stores the bundle and returns the **same** `bundle` instance so the call
    can be chained.
 
@@ -694,7 +694,7 @@ be aware that, `add_level!` modifies its first argument **in place**; if you req
 |------|------|-------------|
 | `bundle` | `PreprocessBundle` | Target bundle to extend. |
 | `level`  | `Symbol` | Identifier for the new segmentation level (e.g. `:char`, `:word`). |
-| `lb`     | [`LevelBundle`](@ref) | Data + vocabulary for that level. |
+| `lb`     | `LevelBundle` | Data + vocabulary for that level. |
 
 # Returns
 The same `bundle`, now containing `level => lb`.

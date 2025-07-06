@@ -48,4 +48,8 @@ include("storage/preprocessor_state.jl")
 export save_preprocess_bundle, load_preprocess_bundle
 
 
+const TOKENIZERS          = TOKENIZERS
+const validate_offsets    = validate_offsets
+const doc_chunk_iterator  = doc_chunk_iterator
+
 end

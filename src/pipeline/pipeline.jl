@@ -171,7 +171,7 @@ RAM.
    through the `vocab` keyword to skip this pass.
 
 2. **Chunking iterator**  
-   A background task produced by [`doc_chunk_iterator`](@ref) groups raw source
+   A background task produced by `doc_chunk_iterator` groups raw source
    documents into slices whose *estimated* size does not exceed
    `chunk_tokens`.
 
@@ -234,6 +234,7 @@ function preprocess_corpus_streaming(srcs;
  end
 
 
+"Internal iterator used by the streaming pipeline."
 function doc_chunk_iterator(srcs, cfg; chunk_tokens::Int = DEFAULT_CHUNK_TOKENS)
     est_tokens(doc) = count(isspace, doc) + 1
 
