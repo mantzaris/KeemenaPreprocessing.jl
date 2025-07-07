@@ -1,7 +1,7 @@
 # KeemenaPreprocessing
 
 [![License: MIT](https://img.shields.io/badge/License-MIT-green.svg)](LICENSE)
-[![Stable](https://img.shields.io/badge/docs-stable-blue.svg)](https://mantzaris.github.io/KeemenaPreprocessing.jl/stable/)
+<!-- [![Stable](https://img.shields.io/badge/docs-stable-blue.svg)](https://mantzaris.github.io/KeemenaPreprocessing.jl/stable/) -->
 [![Dev](https://img.shields.io/badge/docs-dev-blue.svg)](https://mantzaris.github.io/KeemenaPreprocessing.jl/dev/)
 [![Build Status](https://github.com/mantzaris/KeemenaPreprocessing.jl/actions/workflows/CI.yml/badge.svg?branch=main)](https://github.com/mantzaris/KeemenaPreprocessing.jl/actions/workflows/CI.yml?query=branch%3Amain)
 
@@ -17,7 +17,7 @@ segment -> build vocabulary -> align levels -> save bundle.
 ## What you get
 
 * **Vocabulary**
-  - deterministic id ↔ token tables  
+  - deterministic id <-> token tables  
   - minimum-frequency filtering  
   - user-defined special tokens  
 
@@ -30,7 +30,7 @@ segment -> build vocabulary -> align levels -> save bundle.
   - always begin with **1** and end with `n_tokens + 1`  
 
 * **Alignment cross-maps**
-  - byte ↔ char ↔ word indices (forward & backward)  
+  - byte <-> char <-> word indices (forward & backward)  
 
 * **Streaming mode**
   - constant-memory two-pass pipeline  
