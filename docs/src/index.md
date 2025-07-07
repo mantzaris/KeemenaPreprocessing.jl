@@ -1,6 +1,6 @@
 
 
-# KeemenaPreprocessing.jl   :smile:
+# KeemenaPreprocessing.jl  
 
 
 **Clean → Tokenise/Segment → Bundle**

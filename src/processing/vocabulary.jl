@@ -9,9 +9,9 @@ using ..KeemenaPreprocessing:  PreprocessConfiguration,
 
 
 """
-    build_vocabulary(tokens; cfg) → Vocabulary
+    build_vocabulary(tokens; cfg) -> Vocabulary
 
-Construct a [`Vocabulary`](@ref) from a corpus-wide list of **string tokens**.
+Construct a `Vocabulary` from a corpus-wide list of **string tokens**.
 The procedure is fully deterministic and guarantees that the resulting token
 -> id mapping is *stable* across runs given the same inputs and configuration.
 
@@ -22,7 +22,7 @@ The procedure is fully deterministic and guarantees that the resulting token
 | `cfg` | [`PreprocessConfiguration`](@ref) | Supplies frequency threshold (`minimum_token_frequency`) and the initial set of `special_tokens`. |
 
 ### Algorithm
-1. **Frequency count** - `countmap(tokens)` to obtain *token → frequency*.
+1. **Frequency count** - `countmap(tokens)` to obtain *token -> frequency*.
 2. **Seed specials** - make a *mutable* copy of `cfg.special_tokens`.
 3. **Dynamic specials** - when `cfg.record_sentence_offsets == true` ensure
    `:bos` / `:eos` markers are present (defaults `"<BOS>"`, `"<EOS>"`).
@@ -40,7 +40,7 @@ The procedure is fully deterministic and guarantees that the resulting token
    looking up the final ids.
 
 ### Returns
-A fully-populated [`Vocabulary`](@ref):
+A fully-populated `Vocabulary`:
 
 * `id_to_token_strings :: Vector{String}`  
 * `token_to_id_map     :: Dict{String,Int}`  
@@ -52,7 +52,7 @@ A fully-populated [`Vocabulary`](@ref):
 vocab = build_vocabulary(tokens; cfg = cfg)
 
 @info "UNK id: "  vocab.special_tokens[:unk]
-@info "«hello» frequency: " vocab.token_frequencies[vocab.token_to_id_map["hello"]]
+@info "-hello- frequency: " vocab.token_frequencies[vocab.token_to_id_map["hello"]]
 ```
 """
 function build_vocabulary(tokens::Vector{String};
@@ -105,14 +105,14 @@ error if the special is missing.
 """
 special_token_id(vocab::Vocabulary, sym::Symbol) =
     get(vocab.special_tokens, sym) do
-        throw(ArgumentError("Special token :$sym not present; have $(keys(vocab.special_tokens))"))
+        throw(ArgumentError("Special token : (sym) not present; have (keys(vocab.special_tokens))"))
     end
 
 
 """
     build_vocabulary(tokens::Vector{UInt8}; cfg) -> Vocabulary
 
-Byte-level overload that builds a [`Vocabulary`](@ref) when the input sequence
+Byte-level overload that builds a `Vocabulary` when the input sequence
 has already been **flattened to raw UTF-8 bytes** (the usual output of
 `tokenize_and_segment` with `tokenizer_name = :byte`).
 
@@ -135,7 +135,7 @@ conversion is performed up front.
   `minimum_token_frequency`, `special_tokens`, etc.
 
 ### Returns
-A fully-initialised [`Vocabulary`](@ref) suitable for byte-level models.
+A fully-initialised `Vocabulary` suitable for byte-level models.
 
 ### Example
 ```julia
@@ -154,7 +154,7 @@ end
 """
     build_vocabulary(freqs; cfg) -> Vocabulary
 
-Create a [`Vocabulary`](@ref) from a **pre-computed token-frequency table**
+Create a `Vocabulary` from a **pre-computed token-frequency table**
 rather than from the raw token sequence.  This overload is useful when you
 already have global counts—for example, collected in a prior streaming pass or
 loaded from disk—and want to avoid iterating through the full corpus again.
@@ -179,7 +179,7 @@ loaded from disk—and want to avoid iterating through the full corpus again.
 5. **Specials id map** - convert `Symbol -> String` into `Symbol -> Int`.
 
 ### Returns
-A fully-initialised [`Vocabulary`](@ref) comprising
+A fully-initialised `Vocabulary` comprising
 
 * `id_to_token_strings :: Vector{String}`
 * `token_to_id_map     :: Dict{String,Int}`
@@ -193,7 +193,7 @@ cfg   = PreprocessConfiguration(minimum_token_frequency = 2)
 
 vocab = build_vocabulary(freqs; cfg = cfg)
 
-@info "vocabulary size: \$(length(vocab.id_to_token_strings))"
+@info "vocabulary size: (length(vocab.id_to_token_strings))"
 ```
 """
 function build_vocabulary(freqs::Dict{String,Int}; cfg::PreprocessConfiguration)

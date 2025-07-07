@@ -30,7 +30,10 @@ end
 
 export clean_documents #cleaning.jl
 export tokenize_and_segment #tokenization.jl
+
 export build_vocabulary #vocabulary.jl
+@doc (@doc _Vocabulary.build_vocabulary) build_vocabulary
+
 export assemble_bundle #assemble.jl
 export alignment_byte_to_word #alignment : alignment_char_to_word, alignment_byte_to_char, build_alignments! #alignment
 

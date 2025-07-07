@@ -48,7 +48,7 @@ stop  = offsets[i+1] - 1           # inclusive index range of token i
 | Level symbol | Default sentinel style | Typical unit |
 |--------------|-----------------------|--------------|
 | `:byte`      | `[0 ... n]`             | UTF-8 byte |
-| `:character` | `[0 ...… n]`             | Unicode scalar |
+| `:character` | `[0 ... n]`             | Unicode scalar |
 | `:word`      | `[1 ... n+1]`           | whitespace / tokenizer word |
 | `:sentence`  | `[1 ... n+1]`           | heuristic sentence |
 | `:paragraph` | `[1 ... n+1]`           | blank-line span |

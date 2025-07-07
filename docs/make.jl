@@ -1,5 +1,10 @@
 
 
+using Pkg
+Pkg.develop(path = "..")
+Pkg.instantiate() 
+
+
 using KeemenaPreprocessing
 using Documenter
 
