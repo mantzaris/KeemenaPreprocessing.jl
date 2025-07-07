@@ -10,7 +10,7 @@ _require_offsets(name, v) =
 """
     alignment_byte_to_word(byte_c, word_c) -> CrossMap
 
-Construct a byte → word [`CrossMap`](@ref) that projects each **byte index**
+Construct a byte -> word `CrossMap` that projects each **byte index**
 in `byte_c` onto the **word index** in `word_c` that contains it.
 
 ### Preconditions

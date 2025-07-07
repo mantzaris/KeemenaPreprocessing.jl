@@ -10,12 +10,12 @@ const DEFAULT_CHUNK_TOKENS = 500_000
 
 End-to-end convenience wrapper that **loads raw texts, cleans them,
 tokenises, builds a vocabulary, records offsets, and packs the result
-into a [`PreprocessBundle`](@ref)**.
+into a `PreprocessBundle`**.
 
 The routine can be invoked in **two mutually-exclusive ways**:
 
 1. **Explicit configuration** - supply your own
-   [`PreprocessConfiguration`](@ref) through the `config=` keyword.
+   `PreprocessConfiguration` through the `config=` keyword.
 
 2. **Ad-hoc keyword overrides** - omit `config` and pass any subset of the
    configuration keywords directly (e.g. `lowercase = false,
@@ -33,8 +33,8 @@ note: Passing both `config=` **and** per-field keywords is an error because
 |------|------|-------------|
 | `sources` | `AbstractString`, `Vector{<:AbstractString}`, or iterable | Either one or more **file paths/URLs** that will be read, **directories** (silently skipped), or **in-memory strings** treated as raw text. |
 | `save_to` | `String` or `nothing` (default) | If a path is given the resulting bundle is serialised (JLD2) to disk *and* returned; otherwise nothing is written. |
-| `config` | [`PreprocessConfiguration`](@ref) or `nothing` | Pre-constructed configuration object.  When `nothing` (default), a new one is built from `kwargs...`. |
-| `kwargs...` | see [`PreprocessConfiguration`](@ref) | Per-field overrides that populate a fresh configuration when `config` is `nothing`. |
+| `config` | `PreprocessConfiguration` or `nothing` | Pre-constructed configuration object.  When `nothing` (default), a new one is built from `kwargs...`. |
+| `kwargs...` | see `PreprocessConfiguration` | Per-field overrides that populate a fresh configuration when `config` is `nothing`. |
 
 # Pipeline stages
 1. **Loading** - files/URLs are fetched; directory entries are ignored.
@@ -83,8 +83,8 @@ end
 """
     preprocess_corpus(sources, cfg; save_to = nothing) - PreprocessBundle
 
-Variant of [`preprocess_corpus`](@ref) that accepts an **already constructed**
-[`PreprocessConfiguration`](@ref) and therefore **bypasses** all keyword
+Variant of `preprocess_corpus` that accepts an **already constructed**
+`PreprocessConfiguration` and therefore **bypasses** all keyword
 aliasing and default-override logic.
 
 Use this when you have prepared a configuration object up-front
@@ -103,7 +103,7 @@ and want to run the pipeline with those exact settings.
 2. **Clean** text based on `cfg` flags.
 3. **Tokenise & segment**; record requested offsets.
 4. **Build vocabulary** obeying `minimum_token_frequency`, `special_tokens`, ...
-5. **Pack** everything into a [`PreprocessBundle`](@ref).  Optionally persist.
+5. **Pack** everything into a `PreprocessBundle`.  Optionally persist.
 
 # Returns
 A `PreprocessBundle` populated with corpora, vocabularies, alignments,
@@ -287,8 +287,8 @@ end
                                 vocab         = nothing,
                                 chunk_tokens  = DEFAULT_CHUNK_TOKENS) -> Channel{PreprocessBundle}
 
-Low-memory, **two-pass** variant of [`preprocess_corpus`](@ref) that yields a
-*stream* of [`PreprocessBundle`](@ref)s via a `Channel`.  
+Low-memory, **two-pass** variant of `preprocess_corpus` that yields a
+*stream* of `PreprocessBundle` s via a `Channel`.  
 Each bundle covers *≈ `chunk_tokens`* worth of tokens, letting you pipeline
 huge corpora through training code without ever loading the whole dataset into
 RAM.

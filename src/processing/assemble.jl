@@ -12,14 +12,14 @@ using ..KeemenaPreprocessing:  PreprocessConfiguration,
     assemble_bundle(tokens, offsets, vocab, cfg) -> PreprocessBundle
 
 Convert the **token-level artefacts** produced by
-[`tokenize_and_segment`](@ref) into a minimal yet fully valid
-[`PreprocessBundle`](@ref).  The function
+`tokenize_and_segment` into a minimal yet fully valid
+`PreprocessBundle`.  The function
 
 1. Projects each token to its **integer id** using `vocab`; unknown strings are
    mapped to the `:unk` special (throws if the vocabulary lacks one).
 2. Packs the id sequence together with the requested offset tables into a
-   [`Corpus`](@ref).
-3. Wraps that corpus and its vocabulary in a [`LevelBundle`](@ref) whose key is
+   `Corpus`.
+3. Wraps that corpus and its vocabulary in a `LevelBundle` whose key is
    inferred from `cfg.tokenizer_name`:
 
    | `tokenizer_name` value | level symbol stored |
@@ -30,7 +30,7 @@ Convert the **token-level artefacts** produced by
    | `Function`             | `Symbol(typeof(fn))`|
    | any other `Symbol`     | same symbol         |
 
-4. Builds a default [`PipelineMetadata`](@ref) header
+4. Builds a default `PipelineMetadata` header
    (`PipelineMetadata(cfg, v"1.0.0")`).
 5. Returns a `PreprocessBundle` containing *exactly one* level, empty
    `alignments`, and `extras = nothing`.
@@ -40,8 +40,8 @@ Convert the **token-level artefacts** produced by
 |------|------|-------------|
 | `tokens`  | `Vector{<:Union{String,UInt8}}` | Flattened token stream. |
 | `offsets` | `Dict{Symbol,Vector{Int}}` | Start indices for each recorded level (as returned by `tokenize_and_segment`). |
-| `vocab`   | [`Vocabulary`](@ref) | Token <-> id mapping (must contain `:unk`). |
-| `cfg`     | [`PreprocessConfiguration`](@ref) | Determines the level key and special-token requirements. |
+| `vocab`   | `Vocabulary` | Token <-> id mapping (must contain `:unk`). |
+| `cfg`     | `PreprocessConfiguration` | Determines the level key and special-token requirements. |
 
 ### Returns
 `PreprocessBundle` with

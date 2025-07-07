@@ -427,7 +427,7 @@ end
 
 Apply the **text-cleaning stage** of the Keemena pipeline to every document in
 `docs` according to the options held in `cfg`
-([`PreprocessConfiguration`](@ref)).  
+(`PreprocessConfiguration`.  
 The returned vector has the *same length and order* as `docs`.
 
 ### Arguments

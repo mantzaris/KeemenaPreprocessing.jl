@@ -2,7 +2,7 @@
 
 # Quick Start
 
-The **`preprocess_corpus`** wrapper lets you go from raw text -> cleaned, tokenised, aligned, and fully-packaged [`PreprocessBundle`](@ref) in one line.  
+The **`preprocess_corpus`** wrapper lets you go from raw text -> cleaned, tokenised, aligned, and fully-packaged `PreprocessBundle` in one line.  
 Its **only required argument is `sources`** (strings, file paths, URLs, or any iterable that mixes them). Everything else is optional.
 
 | You pass… | What happens |
@@ -223,5 +223,5 @@ wc = get_corpus(bund, :word)
 |---------|---------|-----|
 | Passing `config=` **and** keyword overrides | `ErrorException: Pass either config= or per-field keywords, not both.` | Pick one method; never both. |
 | `record_paragraph_offsets = true` but `preserve_newlines = false` | Warning and paragraphs not recorded. | Enable `preserve_newlines` (done automatically with a warning). |
-| Unsupported `tokenizer_name` symbol | `AssertionError` | Check [`TOKENIZERS`](@ref) or supply a callable. |
+| Unsupported `tokenizer_name` symbol | `AssertionError` | Check `TOKENIZERS` or supply a callable. |
 

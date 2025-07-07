@@ -13,7 +13,7 @@ const _BUNDLE_VERSION = v"1.0.0"
 """
     save_preprocess_bundle(bundle, path; format = :jld2, compress = true) -> String
 
-Persist a [`PreprocessBundle`](@ref) to disk and return the **absolute** file
+Persist a `PreprocessBundle` to disk and return the **absolute** file
 path written.
 
 Currently the only supported `format` is `:jld2`; an error is raised for any
@@ -70,10 +70,10 @@ end
 """
     load_preprocess_bundle(path; format = :jld2) -> PreprocessBundle
 
-Load a previously-saved [`PreprocessBundle`](@ref) from disk.
+Load a previously-saved `PreprocessBundle` from disk.
 
 The function currently understands the **JLD2** wire-format written by
-[`save_preprocess_bundle`](@ref).  It performs a lightweight header check to
+`save_preprocess_bundle`.  It performs a lightweight header check to
 ensure the on-disk bundle version is **not newer** than the library version
 linked at run-time, helping you avoid silent incompatibilities after package
 upgrades.

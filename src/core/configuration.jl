@@ -163,7 +163,7 @@ A fully-initialised `PreprocessConfiguration` instance.  Invalid combinations
 raise `AssertionError` (e.g. unsupported tokenizer) and certain settings emit
 warnings when they imply other flags (e.g. paragraph offsets -> `preserve_newlines`).
 
-See also: `TOKENIZERS` and [`byte_cfg`](@ref) for a pre-canned byte-level configuration.
+See also: `TOKENIZERS` and `byte_cfg` for a pre-canned byte-level configuration.
 """
 function PreprocessConfiguration(;  # all kwargs are optional
         lowercase                 = true,
@@ -268,7 +268,7 @@ end
 """
     byte_cfg(; kwargs...) -> PreprocessConfiguration
 
-Shorthand constructor that returns a [`PreprocessConfiguration`](@ref)
+Shorthand constructor that returns a `PreprocessConfiguration`
 pre-configured for **byte-level** tokenisation.
 
 The wrapper fixes the following fields
