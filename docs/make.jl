@@ -21,6 +21,9 @@ makedocs(
             "Quick Start"        => "guides/quickstart.md",
             "Configuration"      => "guides/configuration.md",
             "Streaming Pipeline" => "guides/streaming.md",
+            "Alignment"          => "guides/alignment.md",
+            "Levels"             => "guides/levels.md",
+            "Offsets"            => "guides/offsets.md"
         ],
         "API Reference" => "api/index.md",
     ],

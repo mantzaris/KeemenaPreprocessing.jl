@@ -12,7 +12,6 @@ Order   = [:constant, :type, :function]
 ```
 
 
-## Power-user helpers
 
 ```@autodocs
 Modules = [KeemenaPreprocessing]
