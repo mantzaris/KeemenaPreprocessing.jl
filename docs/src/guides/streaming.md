@@ -46,7 +46,7 @@ bundles = preprocess_corpus_streaming_chunks("wiki_xml/*";
                                              cfg          = cfg,
                                              chunk_tokens = 250_000)
 
-@info "produced $(length(bundles)) bundles"
+@info "produced (length(bundles)) bundles"
 shuffle!(bundles)      # easy data-parallel sharding
 ```
 
@@ -62,7 +62,7 @@ bundle = preprocess_corpus_streaming_full(["en.txt", "de.txt"];
                                         chunk_tokens = 50_000,
                                         minimum_token_frequency = 5)
 
-@info "corpus length: $(length(get_token_ids(bundle, :word)))"
+@info "corpus length: (length(get_token_ids(bundle, :word)))"
 ```
 
 * Merges each chunk into an accumulator in constant memory.  

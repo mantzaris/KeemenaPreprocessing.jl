@@ -171,7 +171,7 @@ instead of an explicit `Channel`.
 bundles = preprocess_corpus_streaming_chunks("wiki_xml/*";
                                    chunk_tokens = 250_000,
                                    strip_html_tags = true)
-@info "produced \$(length(bundles)) bundles"
+@info "produced (length(bundles)) bundles"
 ```
 """
 preprocess_corpus_streaming_chunks(srcs; kwargs...) =

@@ -1,10 +1,5 @@
 
 
-using Pkg
-Pkg.develop(path = "..")
-Pkg.instantiate() 
-
-
 using KeemenaPreprocessing
 using Documenter
 
@@ -13,7 +8,13 @@ DocMeta.setdocmeta!(KeemenaPreprocessing, :DocTestSetup, :(using KeemenaPreproce
 
 
 makedocs(
-    modules   = [KeemenaPreprocessing],
+    modules   = [KeemenaPreprocessing,
+                KeemenaPreprocessing._Vocabulary,
+                KeemenaPreprocessing._Cleaning,
+                KeemenaPreprocessing._BundleIO,
+                KeemenaPreprocessing._Alignment,
+                KeemenaPreprocessing._Assemble
+            ],
     sitename  = "KeemenaPreprocessing.jl",
     authors   = "Alexander V. Mantzaris",
     format    = Documenter.HTML(;

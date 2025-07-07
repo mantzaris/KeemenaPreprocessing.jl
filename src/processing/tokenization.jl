@@ -42,72 +42,76 @@ _split_sentences(txt::AbstractString)  = split(txt, r"(?<=[.!?])\s+") #split(p, 
 
 
 """
-    tokenize_and_segment(chunks, cfg) -> (tokens, offsets)
+    tokenize_and_segment(chunks, cfg::PreprocessConfiguration) -> (tokens, offsets)
+    tokenize_and_segment(docs::Vector{String}, cfg::PreprocessConfiguration) -> (tokens, offsets)
 
-Core **token-to-offset** stage of the Keemena pipeline.  
-Consumes a stream of `(text, terminal)` pairs (typically the output of
-`doc_chunk_iterator`) and returns
+Tokenise raw text and record start-index vectors (offsets) for the
+segmentation levels you request in `cfg`.
 
-* `tokens  :: Vector{T}` - the flattened token sequence, where  
-  `T == UInt8` when `cfg.tokenizer_name == :byte` and `T == String`
-  otherwise; and
-* `offsets :: Dict{Symbol,Vector{Int}}` - start-index vectors for every
-  segmentation level requested by the `record_*_offsets` flags in
-  [`PreprocessConfiguration`](@ref).
+# Method overview
+* **Streaming variant**  
+  Accepts an iterator that yields `(chunk, terminal)` where  
+  `chunk :: String` is a piece of raw text and  
+  `terminal :: Bool` is true when the chunk ends a document.
 
-### Arguments
-| name | type | description |
-|------|------|-------------|
-| `chunks` | iterator of `(String, Bool)` | Each element is a *chunk of raw text* and a boolean `terminal` that is `true` when the chunk ends a **document** (so document offsets can be closed). |
-| `cfg` | `PreprocessConfiguration` | Determines the tokenizer, which offset tables are recorded, and whether empty tokens are preserved. |
+* **Convenience variant**  
+  Accepts a vector of full documents. Each document is wrapped into a
+  `(doc, true)` pair and then processed by the streaming implementation.
 
-### Processing steps
-1. **Tokenizer selection** `_select_tokenizer(cfg.tokenizer_name)`.  
-   The eltype of `tokens` is inferred (`UInt8` for `:byte`, `String` otherwise).
+Both variants share the same algorithm and return type.
 
-2. **Sanity checks**  
-   * `record_character_offsets` requires `tokenizer_name == :char`.  
-   * `record_byte_offsets`      requires `tokenizer_name == :byte`.
+# Shared arguments
+* `cfg` - an instance of `PreprocessConfiguration` that selects
+  * the tokenizer (`tokenizer_name`);
+  * which offset tables are recorded (`record_sentence_offsets`,  
+    `record_paragraph_offsets`, and so on);
+  * how empty tokens are handled (`preserve_empty_tokens`).
 
-3. **Per-chunk iteration**  
-   * Optionally split the chunk into paragraphs (`_split_paragraphs`)  
-     and sentences (`_split_sentences`) when the corresponding offset levels
-     are requested.  
-   * Tokenise each sentence and push tokens into the output vector.  
-   * After each token push, append the index of the *next* token to the
-     relevant offset vector(s).
+# Source-specific arguments
+* `chunks` - iterator of `(String, Bool)` pairs.
+* `docs`   - vector of document strings.
 
-4. **Terminal handling** - when `terminal == true` the current token
-   length closes the **document** offset.
-
-5. **Sentinel closure** - ensures that every recorded offsets vector ends
-   with `length(tokens) + 1`, even if no tokens were processed for that level.
-
-6. **Packaging** - builds `offsets::Dict` with keys `:document`, `:paragraph`,
-   `:sentence`, `:word`, `:character`, `:byte` according to the flags set in
-   `cfg`.
-
-### Returns
+# Returns
 `(tokens, offsets)`
 
-* `tokens :: Vector{UInt8}` **or** `Vector{String}` - flattened token stream.
-* `offsets :: Dict{Symbol,Vector{Int}}` - start indices per level; keys only
-  for levels whose `record_*_offsets` flag is `true`.
+* `tokens :: Vector{UInt8}` when `tokenizer_name == :byte`, otherwise
+  `Vector{String}`.
+* `offsets :: Dict{Symbol,Vector{Int}}` whose keys correspond to every
+  `record_*_offsets` flag set to true in `cfg`.  
+  Each vector always begins with 1 and ends with `length(tokens) + 1`.
 
-### Errors
-Throws `ArgumentError` when incompatible configuration options are detected
-(eg `record_byte_offsets` with a non-byte tokenizer).
+# Processing steps
+1. **Select tokenizer** with `_select_tokenizer(cfg.tokenizer_name)`.
+2. **Validate** that byte offsets are requested only with the byte tokenizer
+   and character offsets only with the character tokenizer.
+3. **Iterate** over chunks  
+   • Optionally split into paragraphs and sentences.  
+   • Tokenise each sentence and push tokens.  
+   • After each push, append `next_index = length(tokens) + 1`
+     to every active offset vector.  
+   • When `terminal` is true, close the current document offset.
+4. **Close sentinels** - ensure every recorded offsets vector ends with
+   `length(tokens) + 1`.
+5. **Package** and return `(tokens, offsets)`.
 
-### Example
+# Example
+
 ```julia
-chunks = (("Hello world.", true),)            # single-doc iterator
-cfg    = PreprocessConfiguration()
+# Whole-corpus path
+docs = ["Hello world.", "Second document..."]
+cfg  = PreprocessConfiguration(tokenizer_name = :whitespace,
+                               record_sentence_offsets = true,
+                               record_document_offsets = true)
 
-toks, offs = tokenize_and_segment(chunks, cfg)
+tokens, offs = tokenize_and_segment(docs, cfg)
 
-@info offs[:sentence]    # -> [1, 3]   (1-based; sentinel at end)
-@info toks               # -> ["Hello", "world."]
+println(tokens)        # ["Hello", "world.", "Second", "document..."]
+println(offs[:document])   # [1, 3]        sentinel at end is implicit
+println(offs[:sentence])   # [1, 3, 5]
 ```
+Error conditions: an ArgumentError is thrown if you request byte offsets
+with a non-byte tokenizer or character offsets with a non-character tokenizer,
+or if any other incompatible configuration is detected.
 """
 function tokenize_and_segment(chunks, cfg::PreprocessConfiguration)
 
@@ -199,41 +203,7 @@ function tokenize_and_segment(chunks, cfg::PreprocessConfiguration)
 end
 
 
-"""
-    tokenize_and_segment(docs, cfg) -> (tokens, offsets)
 
-Convenience overload of [`tokenize_and_segment`](@ref tokenize_and_segment(::Any, ::PreprocessConfiguration))
-for the common case where the **entire corpus is already materialised** as
-`Vector{String}` - one string per **document**.
-
-The function wraps each document into a `(doc, true)` pair (marking it as a
-*terminal* chunk), feeds the resulting iterator to the general streaming
-implementation, and therefore inherits its behaviour and return type:
-
-* `tokens  :: Vector{T}` - flattened token sequence (`UInt8` for byte-level
-  tokenisers; `String` otherwise).
-* `offsets :: Dict{Symbol,Vector{Int}}` - start indices for every segmentation
-  level requested by `cfg.record_*_offsets`.
-
-### Arguments
-| name | type | description |
-|------|------|-------------|
-| `docs` | `Vector{String}` | Each element is treated as one **document**. |
-| `cfg`  | `PreprocessConfiguration` | Controls the tokenizer, cleaning options, and which offset tables are recorded. |
-
-### Example
-```julia
-docs = ["First document.", "Second document..."]
-cfg  = PreprocessConfiguration(tokenizer_name = :whitespace)
-
-tokens, offs = tokenize_and_segment(docs, cfg)
-
-@info offs[:document]   # -> [1, 3]  (sentinel at end)
-```
-
-All validations and error semantics mirror those of the streaming variant;
-this wrapper merely handles chunk generation for you.
-"""
 function tokenize_and_segment(docs::Vector{String},
                               cfg::PreprocessConfiguration)
     # Turn each whole document into a single-terminal chunk
