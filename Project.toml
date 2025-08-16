@@ -1,7 +1,7 @@
 name = "KeemenaPreprocessing"
 uuid = "f4ce45ae-2b88-40b3-ad81-d2d70f7eb3a1"
 authors = ["Alexander V. Mantzaris"]
-version = "1.0.0"
+version = "0.1.0"
 
 [deps]
 Glob = "c27321d9-0574-5035-807b-f59d2c89b15c"
