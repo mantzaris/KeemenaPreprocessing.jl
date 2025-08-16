@@ -26,6 +26,7 @@ makedocs(
         "Guides"        => [
             "Quick Start"        => "guides/quickstart.md",
             "Configuration"      => "guides/configuration.md",
+            "Core Types Introduction" => "guides/types.md",
             "Streaming Pipeline" => "guides/streaming.md",
             "Alignment"          => "guides/alignment.md",
             "Levels"             => "guides/levels.md",

@@ -108,6 +108,47 @@ bund1 = preprocess_corpus("my_corpus.txt";
 bund2 = load_preprocess_bundle("corpus.jld2")
 ```
 
+---
+
+
+## Interoperability
+
+```julia
+using KeemenaPreprocessing
+
+# 1) Load a preprocessed bundle
+bundle = load_preprocess_bundle("corpus.jld2")
+
+# 2) Choose a segmentation level for modeling (e.g., words)
+word_corpus  = get_corpus(bundle, :word)      # -> Corpus
+vocabulary   = bundle.levels[:word].vocabulary
+
+# 3) Get the token ids as a single flat vector (all documents concatenated)
+token_ids = word_corpus.token_ids             # Vector{Int32} (or Int)
+
+# 4) Split token ids by document using the document offset vector
+#    (offsets follow the "[1 ... n+1]" sentinel style at word-level)
+document_offsets = word_corpus.document_offsets
+document_ranges = (document_offsets[i]:(document_offsets[i+1]-1)
+                   for i in 1:length(document_offsets)-1)
+document_token_views = [view(token_ids, r) for r in document_ranges]
+
+# 5) Debug / data inspection: map a handful of ids back to strings
+first_20_strings = map(id -> vocabulary.string(id), token_ids[1:20])
+
+# 6) Word -> raw-text span (useful for highlighting model outputs)
+#    (see Guides -> Offsets for the sentinel convention)
+word_index = 42
+start_ix   = word_corpus.word_offsets[word_index]
+stop_ix    = word_corpus.word_offsets[word_index + 1] - 1
+raw_span   = String(codeunits(bundle.extras.raw_text)[start_ix:stop_ix])
+
+# 7) Byte -> word (project low-level artifacts back to words)
+build_ensure_alignments!(bundle)  # ensure canonical :byte->:word map exists
+byte_to_word = bundle.alignments[(:byte, :word)].alignment
+word_of_byte_123 = byte_to_word[123]
+```
+
 
 ---
 

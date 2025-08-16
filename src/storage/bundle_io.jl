@@ -2,7 +2,7 @@
 
 module _BundleIO
 
-
+using CodecZlib
 using JLD2
 using ..KeemenaPreprocessing: PreprocessBundle, PreprocessConfiguration
 
@@ -11,7 +11,7 @@ const _BUNDLE_VERSION = v"1.0.0"
 
 
 """
-    save_preprocess_bundle(bundle, path; format = :jld2, compress = true) -> String
+    save_preprocess_bundle(bundle, path; format = :jld2, compress = false) -> String
 
 Persist a `PreprocessBundle` to disk and return the **absolute** file
 path written.
@@ -25,7 +25,7 @@ other value.
 | `bundle` | `PreprocessBundle` | Object produced by `preprocess_corpus`. |
 | `path`   | `AbstractString`   | Destination file name (relative or absolute).  Parent directories are created automatically. |
 | `format` | `Symbol` (keyword) | Serialization format. **Must be `:jld2`**. |
-| `compress` | `Bool` (keyword) | When `true` (default) the JLD2 file is written with zlib compression; set to `false` for fastest write speed. |
+| `compress` | `Bool` (keyword) | When `false` (default) the JLD2 file is written without zlib compression; set to `false` for fastest write speed (default), true adds compression. |
 
 ### File structure
 The JLD2 file stores three top-level keys
@@ -50,7 +50,7 @@ p = save_preprocess_bundle(bund, "artifacts/train_bundle.jld2"; compress = false
 function save_preprocess_bundle(bundle::PreprocessBundle,
                                 path::AbstractString;
                                 format::Symbol = :jld2,
-                                compress::Bool = true)
+                                compress::Bool = false)
 
     format == :jld2 || error("Only :jld2 format is currently supported")
 

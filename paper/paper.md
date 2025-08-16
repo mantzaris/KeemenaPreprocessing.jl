@@ -1,5 +1,5 @@
 ---
-title: "KeemenaPreprocessing.jl — Unicode-Robust Cleaning, Multi-Level Tokenisation & Streaming Offset Bundling for Julia NLP"
+title: "KeemenaPreprocessing.jl: Unicode-Robust Cleaning, Multi-Level Tokenisation & Streaming Offset Bundling for Julia NLP"
 tags:
   - Julia
   - NLP
