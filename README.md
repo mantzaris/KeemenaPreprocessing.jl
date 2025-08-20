@@ -97,4 +97,6 @@ yet you still need strict memory bounds during preprocessing.
 
 # Installing
 
-open the Julia REPL, get into package mode pressing ] and put: add https://github.com/mantzaris/KeemenaPreprocessing.jl
+It can be downloaded from the general repository: `import Pkg; Pkg.add("KeemenaPreprocessing")`, or pressing ']' and then typing `add KeemenaPreprocessing` and then back in the REPL prompt `using KeemenaPreprocessing`.
+
+For the Dev version: open the Julia REPL, get into package mode pressing ] and put: add https://github.com/mantzaris/KeemenaPreprocessing.jl

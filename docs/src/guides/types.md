@@ -5,7 +5,7 @@ This page gives a practical introduction to the small set of types that underlin
 
 ---
 
-## Mental model (one minute)
+## Basic Concept
 
 Keemena represents a corpus as a **flat vector of token identifiers** plus **offset vectors** that mark the starts of higher‑level units:
 
