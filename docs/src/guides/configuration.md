@@ -123,6 +123,32 @@ mytok(text) = split(lowercase(text), r"[ \-]+")
 cfg = PreprocessConfiguration(tokenizer_name = mytok)
 ```
 
+### Example: using WordTokenizers.jl via an adapter
+
+WordTokenizers.jl exposes many tokenizers, and some return `SubString{String}` (or otherwise vary token element types).
+To keep KeemenaPreprocessing outputs stable for downstream pipelines, wrap the tokenizer and normalize to `Vector{String}`.
+
+```julia
+using KeemenaPreprocessing
+import WordTokenizers
+
+function wordtokenizers_nltk_tokenizer(text::AbstractString)::Vector{String}
+    # Normalize element type for stable downstream typing
+    return String.(WordTokenizers.nltk_word_tokenize(text))
+end
+
+configuration = PreprocessConfiguration(
+    tokenizer_name = wordtokenizers_nltk_tokenizer,
+)
+
+documents = ["Hello, world! This is a test."]
+bundle = preprocess_corpus(documents; config = configuration)
+```
+
+Note: avoid `WordTokenizers.set_tokenizer(...)` in pipeline code since it changes global behavior.
+Prefer calling the tokenizer function you want explicitly (as above).
+
+
 ---
 
 ## Helper: `byte_cfg`

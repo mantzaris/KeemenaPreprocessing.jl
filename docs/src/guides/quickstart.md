@@ -13,7 +13,7 @@ Its **only required argument is `sources`** (strings, file paths, URLs, or any i
 
 ---
 
-## Minimal 'hello bundle' (all defaults)
+## Minimal 'hello bundle' (all defaults)
 
 ```julia
 using KeemenaPreprocessing
@@ -24,7 +24,7 @@ bund = preprocess_corpus("my_corpus.txt") #one-liner
 
 ---
 
-## Single *in-memory* string
+## Single *in-memory* string
 
 ```julia
 raw = """
@@ -37,7 +37,7 @@ bund = preprocess_corpus(raw) # treats `raw` as a document
 
 ---
 
-## Multiple strings (small ad-hoc corpus)
+## Multiple strings (small ad-hoc corpus)
 
 ```julia
 docs = [
@@ -220,7 +220,7 @@ By default every offset array is **sorted and sentinel-terminated** (`last == n_
 
 ---
 
-## Supplying a **custom tokenizer** function
+## Supplying a **custom tokenizer** function
 
 Any callable `f(::AbstractString) -> Vector{String}` can replace the built-ins.  
 Below we split on whitespace **and** the dash "‐" character:
