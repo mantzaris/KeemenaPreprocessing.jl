@@ -164,19 +164,22 @@ end
     end
 
     @testset "Function tokenizer name" begin
-        # test with function as tokenizer_name
-        custom_tokenizer = x -> split(x)
+        function custom_tokenizer(text::AbstractString)::Vector{String}
+            return String.(split(text))
+        end
+
         tokens = ["test", "tokens"]
         vocab = _test_vocab(["test", "tokens"])
         offsets = Dict(:document => [1, 3])
-        cfg = KeemenaPreprocessing.PreprocessConfiguration(tokenizer_name=custom_tokenizer)
-        
+        cfg = KeemenaPreprocessing.PreprocessConfiguration(tokenizer_name = custom_tokenizer)
+
         bundle = KeemenaPreprocessing._Assemble.assemble_bundle(tokens, offsets, vocab, cfg)
-        
-        # should create level with function type name
-        level_name = Symbol(typeof(custom_tokenizer))
-        @test haskey(bundle.levels, level_name)
+
+        # Custom callable tokenizers map to the canonical primary stream key.
+        @test haskey(bundle.levels, :word)
+        @test length(bundle.levels) == 1
     end
+
 
     @testset "Metadata preservation" begin
         tokens = ["test"]
