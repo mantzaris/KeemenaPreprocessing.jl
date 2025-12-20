@@ -26,18 +26,22 @@ After cleaning, the same configuration drives tokenisation.  Keemena ships byte-
 
 All artefacts—clean strings, token-ids, offset vectors, vocabulary statistics, and alignment tables are consolidated into a single `PreprocessBundle`.  The bundle can be saved or loaded with one function call using the JLD2 format, making it a drop-in dependency for downstream embedding or language-model pipelines inspired by word2vec [@mikolov2013efficient].  For modest datasets, the entire pipeline executes in a single statement; for web-scale corpora, KeemenaPreprocessing's streaming mode processes fixed-size token chunks in constant memory while still accumulating global frequency tables.  Thus, whether invoked with default settings for a quick experiment or finely tuned for production, KeemenaPreprocessing.jl offers a cohesive, Julia-native path from raw text to analysis-ready data [@julia]. Many of these principles are introduced in [@bird2009natural];
 
-
 # Statement of Need
 
-Natural-language ML pipelines depend on reliable, reproducible preprocessing. Popular toolkits such as spaCy [@honnibal2020spacy], Stanford CoreNLP [@manning2014stanford], and Gensim [@vrehuuvrek2010software] are Python or Java-centric, require heavyweight installations, and assume the full corpus fits in memory or on a local filesystem. While WordTokenizers.jl provides basic tokenisation for Julia [@kaushal2020wordtokenizers], Julia users still lack an integrated, streaming pipeline that:
+Modern NLP and language-modeling experiments depend on preprocessing that is reliable, reproducible, and auditable: changes in cleaning rules, tokenisation boundaries, or vocabulary construction can change model behavior and evaluation. Some ecosystems provide full-featured NLP toolkits (eg. spaCy [@honnibal2020spacy], Stanford CoreNLP [@manning2014stanford], and Gensim [@vrehuuvrek2010software]), but these are primarily developed in and for Python/Java and are commonly used as end-to-end NLP pipelines rather than as a lightweight preprocessing step that produces a stable output type for downstream Julia modeling.
 
-- Scales beyond RAM through chunked streaming.
+Within Julia, existing packages such as WordTokenizers.jl [@kaushal2020wordtokenizers] provide fast tokenisation primitives [@kaushal2020wordtokenizers], but many research workflows require additional infrastructure that is typically reimplemented per project: (i) a deterministic vocabulary and token-id representation, (ii) multi-level offsets and span traceability back to the raw text, and (iii) predictable memory behavior for corpora that cannot be loaded into RAM in one piece.
 
-- Tracks fine-grained offsets so models can mix sub-word and sentence-level features.
+KeemenaPreprocessing.jl fills this gap by focusing narrowly on corpus preprocessing as an explicit, reproducible artifact-building stage. It is intended for researchers and practitioners who preprocess large corpora for training or evaluating ML/NLP models and who need stable alignment across tokenisation levels (byte/char/word/sentence/paragraph/document). It is *not* intended to be a general NLP toolkit (tagging, parsing, NER, etc), nor a collection of tokenizer implementations; instead, it emphasizes a stable data model, deterministic preprocessing, and loose interoperability via user-supplied callables.
 
-- Lives entirely in Julia, avoiding Python/Java dependencies and enabling zero-copy interop with Julia's numerical stack.
+Concretely, KeemenaPreprocessing provides:
 
-KeemenaPreprocessing.jl fills this gap, letting researchers preprocess billions of tokens on commodity hardware while retaining compatibility with embedding or language-model training workflows inspired by word2vec [@mikolov2013efficient]. 
+- A streaming, two-pass preprocessing workflow that supports corpora larger than available RAM by processing fixed-size token chunks.
+- Deterministic vocabulary construction with user-defined special tokens, producing stable token-id streams suitable for downstream modeling.
+- Dense offset tables and cross-level alignment maps that preserve exact traceability between bytes, characters, and higher-level tokenisation units, enabling robust span alignment and evaluation.
+- A compact `PreprocessBundle` interface that can be saved and loaded for long-running experiments while remaining a plain Julia object for direct use in numerical and modeling code.
+
+These design choices support Julia-native modeling pipelines while keeping the preprocessing step transparent, testable, and reproducible—principles that underlie many established NLP workflows [@bird2009natural].
 
 
 # Acknowledgements

@@ -8,6 +8,20 @@ using ..KeemenaPreprocessing:  PreprocessConfiguration,
                                PipelineMetadata, PreprocessBundle
 
 
+
+# Internal: map tokenizer choice to the canonical base level name used in bundle.levels.
+# Custom callable tokenizers are treated as word-level tokenizers.
+_base_token_level(tk) =
+    tk === :byte       ? :byte :
+    tk === :char       ? :character :
+    tk === :unicode    ? :word :
+    tk === :whitespace ? :word :
+    tk isa Function    ? :word :
+    tk isa Symbol      ? tk :
+    :word
+
+
+
 """
     assemble_bundle(tokens, offsets, vocab, cfg) -> PreprocessBundle
 
@@ -72,13 +86,14 @@ function assemble_bundle(tokens::AbstractVector,
                          vocab::Vocabulary,
                          cfg::PreprocessConfiguration)
 
-    level = cfg.tokenizer_name === :byte       ? :byte  :
-            cfg.tokenizer_name === :char       ? :character  :
-            cfg.tokenizer_name === :unicode    ? :word  :      # unicode tokenizer -> words
-            cfg.tokenizer_name === :whitespace ? :word  :
-            isa(cfg.tokenizer_name, Function)  ? Symbol(typeof(cfg.tokenizer_name))  :
-            cfg.tokenizer_name isa Symbol      ? cfg.tokenizer_name  :
-            :word
+   level = _base_token_level(cfg.tokenizer_name)
+   #  level = cfg.tokenizer_name === :byte       ? :byte  :
+   #          cfg.tokenizer_name === :char       ? :character  :
+   #          cfg.tokenizer_name === :unicode    ? :word  :      # unicode tokenizer -> words
+   #          cfg.tokenizer_name === :whitespace ? :word  :
+   #          isa(cfg.tokenizer_name, Function)  ? Symbol(typeof(cfg.tokenizer_name))  :
+   #          cfg.tokenizer_name isa Symbol      ? cfg.tokenizer_name  :
+   #          :word
 
     # 0 Ensure we have an <UNK> ID for out-of-vocabulary tokens
     unk_id = get(vocab.special_tokens, :unk, nothing)

@@ -266,3 +266,14 @@ wc = get_corpus(bund, :word)
 | `record_paragraph_offsets = true` but `preserve_newlines = false` | Warning and paragraphs not recorded. | Enable `preserve_newlines` (done automatically with a warning). |
 | Unsupported `tokenizer_name` symbol | `AssertionError` | Check `TOKENIZERS` or supply a callable. |
 
+---
+
+### Why JLD2 (and when to use something else)
+
+KeemenaPreprocessing uses JLD2 for the convenience helpers `save_preprocess_bundle` and
+`load_preprocess_bundle`. JLD2 is a pure-Julia serialization format that can store arbitrary
+Julia structs efficiently and produces files compatible with the HDF5 spec.
+
+The `PreprocessBundle` itself is just a plain Julia object, so you are not locked into JLD2:
+if your workflow needs memory-mapped arrays, indexed random access, or cross-language IO,
+you can write the bundle (or just its large arrays) using a different storage backend.

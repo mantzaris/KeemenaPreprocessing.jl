@@ -12,6 +12,17 @@
 > **One-stop text pre-processor for Julia** - clean -> tokenise ->
 segment -> build vocabulary -> align levels -> save bundle.
 
+KeemenaPreprocessing.jl is a corpus-level preprocessing substrate for ML/NLP pipelines in Julia. It builds a deterministic PreprocessBundle from raw text using a streaming, two-pass workflow with predictable memory behavior.
+The key output is a reproducible artifact: token id streams plus offset tables and cross-level alignments (byte/char/word/sentence/etc.) suitable for downstream modeling, annotation alignment, and evaluation.
+
+Intended for:
+- Researchers and engineers preprocessing large corpora for training or evaluating ML/NLP models.
+- Workflows that need stable offsets/cross-references (for aligning spans, annotations, evaluation, error analysis).
+
+Not ideally for:
+- Users looking for a full NLP toolkit (tagging, parsing, NER, lemmatization, etc.).
+- Users wanting a library that bundles many tokenizer implementations or enforces a specific tokenizer ecosystem.
+
 ---
 
 ## What you get
@@ -39,6 +50,23 @@ segment -> build vocabulary -> align levels -> save bundle.
 * **Bundles**
   - everything packed into a `PreprocessBundle`  
   - save / load with JLD2 in one line  
+
+---
+
+## Scope and ecosystem
+
+- KeemenaPreprocessing focuses on building a deterministic, aligned preprocessing artifact for downstream modeling
+- Tokenizer packages (like WordTokenizers.jl) focus on fast sentence/word splitting and configurable tokenizers, including global configurability via set_tokenizer/set_sentence_splitter
+- BPE/tokenizer-model packages (like BytePairEncoding.jl) focus on subword tokenization methods (including GPT-2 byte-level BPE and tiktoken)
+- KemenaPreprocessing integrates with these via callables rather than hard dependencies, to avoid locking users into upstream conventions and to preserve reproducible pipelines
+
+* Bundles (portable preprocessing artifacts)
+
+  * everything is packed into a `PreprocessBundle` (plain Julia structs + arrays)
+  * convenience persistence via JLD2 (`save_preprocess_bundle` / `load_preprocess_bundle`)
+  * JLD2 is a default convenience backend, not a constraint:
+    advanced users can serialize the bundle differently (e.g. HDF5/Arrow/custom layouts)
+    if they need cross-language interchange, memory mapping, or indexed random access
 
 ---
 

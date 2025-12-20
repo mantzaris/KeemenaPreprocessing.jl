@@ -127,3 +127,30 @@ preprocess_corpus_streaming(srcs;
 
 All keyword arguments are forwarded unchanged.  
 See `PreprocessConfiguration` for the full list.
+
+
+## Benchmarks (indicative)
+
+Streaming mode is designed for bounded working memory during preprocessing by producing fixed-size
+token chunks. It trades throughput for a bounded in-memory chunk bundle.
+
+The repository contains a small reproducible benchmark script:
+
+    julia --project bench/scalability_demo.jl
+
+
+Setup:
+- corpus: ~256 MiB (62 sharded text files built from 2 Project Gutenberg books)
+- tokenizer_name: :whitespace
+- record_sentence_offsets: true
+- chunk_tokens (streaming): 250_000
+
+| Scenario | Total tokens | Time (s) | Total allocations (MiB) | In-memory artifact size |
+|---|---:|---:|---:|---:|
+| preprocess_corpus (single bundle) | 43,037,600 | 41.77 | 11,457.84 | 657.28 MiB bundle |
+| preprocess_corpus_streaming (consume + discard) | 43,037,600 | 79.67 | 24,381.64 | 11.25 MiB (max chunk bundle) |
+
+Notes:
+- Total allocations is cumulative allocation volume, not peak RSS.
+- Bundle sizes are from Base.summarysize (approx).
+- First run includes compilation; run twice to obtain steady-state timings.
