@@ -1,6 +1,6 @@
 
 
-# Configuration
+# [Configuration](@id config_top)
 
 `PreprocessConfiguration` is a **single struct that controls every stage** of the preprocessing pipeline:
 
@@ -79,7 +79,7 @@ Arguments are grouped by stage; omit any keyword to keep its default.
 
 | keyword | default | description |
 |---------|---------|-------------|
-| `tokenizer_name` | `:whitespace` | One of [`TOKENIZERS`](#built-in-tokenizers) **or** a custom `f(::String)` callable. |
+| `tokenizer_name` | `:whitespace` | One of [`TOKENIZERS`](@ref built_in_tokenizers) **or** a custom `f(::String)` callable. |
 | `preserve_empty_tokens` | `false` | Keep zero-length tokens if the tokenizer returns them. |
 
 ### Vocabulary construction
@@ -102,7 +102,8 @@ Arguments are grouped by stage; omit any keyword to keep its default.
 
 ---
 
-## Built-in tokenizers 
+## [Built-in tokenizers](@id built_in_tokenizers)
+
 
 ```julia
 const TOKENIZERS = (:whitespace, :unicode, :byte, :char)
@@ -166,7 +167,7 @@ All other keywords are forwarded unchanged.
 
 ## Examples
 
-### Language-agnostic, emoji-masked corpus
+### Language-agnostic, emoji-masked corpus
 
 ```julia
 cfg = PreprocessConfiguration(

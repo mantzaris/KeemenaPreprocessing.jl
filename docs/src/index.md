@@ -61,7 +61,7 @@ bundle = preprocess_corpus("data/raw.txt"; config = cfg)
 
 ## Documentation map
 
-* **Configuration** : every option in `PreprocessConfiguration`
+* **[Configuration](@ref config_top)** : every option in `PreprocessConfiguration`
 * **Cleaning** : rules, sentinel tokens, customisation
 * **Tokenisation** : built-in tokenisers and extensibility
 * **Vocabulary** : frequency thresholds, specials, determinism

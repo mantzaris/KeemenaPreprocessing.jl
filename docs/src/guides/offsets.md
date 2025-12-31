@@ -1,6 +1,6 @@
 
 
-# Offset Vectors & Segmentation Levels
+# [Offset Vectors & Segmentation Levels](@id offsets_top)
 
 Keemena stores every corpus as a **flat vector of token-ids** plus one or more  
 *offset vectors* that mark the boundaries of higher-level units  
@@ -14,7 +14,7 @@ Understanding these vectors lets you
 
 ---
 
-## Anatomy of an offset vector
+## Anatomy of an offset vector
 
 ```
 offsets = [s0, s1, ..., sn]        # length = n_tokens   or   n_tokens + 1
@@ -43,7 +43,7 @@ stop  = offsets[i+1] - 1           # inclusive index range of token i
 
 ---
 
-##  Sentinel conventions by level
+## [Sentinel conventions by level](@id offsets_sentinels)
 
 | Level symbol | Default sentinel style | Typical unit |
 |--------------|-----------------------|--------------|
@@ -61,7 +61,7 @@ vector in a merged bundle ends with **exactly one** sentinel.
 
 ---
 
-## Mapping symbols -> vectors
+## Mapping symbols -> vectors
 
 Keemena keeps an internal lookup table
 
@@ -94,7 +94,7 @@ sent  = getfield(corpus, field)          # Vector{Int} or `nothing`
 
 ---
 
-## Cross-level alignment
+## Cross-level alignment
 
 When two levels share the same span (e.g. bytes & characters) Keemena derives a
 `CrossMap`:
@@ -115,7 +115,7 @@ bundle:
 
 ---
 
-## Practical snippets
+## Practical snippets
 
 ###  Extract raw text for the 42-nd word
 
@@ -144,7 +144,7 @@ shuffle!(spans)
 
 ---
 
-## Add a custom level (advanced workflow)
+## Add a custom level (advanced workflow)
 
 ```julia
 #  build monotone offset vector (leading 1, trailing n+1)

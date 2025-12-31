@@ -34,7 +34,7 @@ for bund in ch                      # JIT production, O(1 chunk) RAM
 end
 ```
 
-*The channel is **unbuffered** (`Inf` capacity) - a new bundle is produced only
+*The channel is **unbuffered** - a new bundle is produced only
 when the consumer is ready.*
 
 ---

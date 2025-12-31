@@ -1,7 +1,9 @@
-# Using KeemenaPreprocessing with existing tokenizers
+# [Using KeemenaPreprocessing with existing tokenizers](@id guide_existing_tokenizers)
 
 KeemenaPreprocessing is not a tokenizer collection and it is not a general NLP toolkit.
 Instead, it is a preprocessing pipeline: you choose how to tokenize, and KeemenaPreprocessing builds a deterministic `PreprocessBundle` (tokens + vocabulary + offsets + cross-level alignments) for downstream modeling, annotation, and evaluation.
+
+If you want a lightweight custom tokenizer function (no external dependencies), see [Quick Start: Supplying a custom tokenizer function](@ref quickstart_custom_tokenizer).
 
 This page shows how to use existing tokenizer packages (eg WordTokenizers.jl, BytePairEncoding.jl) without KeemenaPreprocessing taking hard dependencies on them. KeemenaPreprocessing also ships a small set of built-in tokenizers (`:whitespace`, `:unicode`, `:byte`, `:char`) for convenience with various configurations that should work in most instances.
 
@@ -18,7 +20,7 @@ KeemenaPreprocessing accepts tokenizers as callables rather than integrating tig
 - Reproducibility: the tokenizer behavior is pinned inside your `PreprocessConfiguration`, rather than being controlled by hidden global defaults.
 - Avoid global state surprises: some tokenizer packages expose globally configurable defaults (changing them can affect other code in the same Julia session)
 - API stability: upstream tokenizers evolve; a minimal callable interface keeps KeemenaPreprocessing stable and reduces breakage risk.
-- Separation of concerns: KeemenaPreprocessing focuses on streaming execution, offsets, alignment, and deterministic artifacts, not on maintaining feature parity with every tokenizer.
+- Separation of concerns: KeemenaPreprocessing focuses on streaming execution, offsets, alignment, and deterministic artifacts, not on maintaining feature parity with every tokenizer. (See [Built-in tokenizers](@ref built_in_tokenizers))
 
 ---
 

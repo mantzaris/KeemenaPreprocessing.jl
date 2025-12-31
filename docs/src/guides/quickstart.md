@@ -137,7 +137,7 @@ document_token_views = [view(token_ids, r) for r in document_ranges]
 first_20_strings = map(id -> vocabulary.string(id), token_ids[1:20])
 
 # 6) Word -> raw-text span (useful for highlighting model outputs)
-#    (see Guides -> Offsets for the sentinel convention)
+#    (See [Offsets: sentinel conventions by level](@ref offsets_sentinels).)
 word_index = 42
 start_ix   = word_corpus.word_offsets[word_index]
 stop_ix    = word_corpus.word_offsets[word_index + 1] - 1
@@ -170,9 +170,9 @@ wc = get_corpus(bund, :word)     # word-level Corpus
 ### Byte -> word mapping for a single token
 
 ```julia
-btw = bund.levels[:word].cross_map        # `CrossMap` object
+btw = bund.alignments[(:byte, :word)]     # CrossMap
 byte_ix = 12345
-word_ix = btw(byte_ix)    # constant-time lookup
+word_ix = btw.alignment[byte_ix]          # constant-time lookup
 ```
 
 ### Convenience helpers
@@ -205,7 +205,7 @@ cfg = PreprocessConfiguration(
 bund = preprocess_corpus("demo.txt"; config = cfg)
 
 byte_corp = get_corpus(bund, :byte)        # each token is UInt8
-char_corp = get_corpus(bund, :char)        # Unicode code-points
+char_corp = get_corpus(bund, :character)        # Unicode code-points
 word_corp = get_corpus(bund, :word)        # words / graphemes
 sent_offs = word_corp.sentence_offsets     # sentinel-terminated
 para_offs = word_corp.paragraph_offsets
@@ -220,7 +220,7 @@ By default every offset array is **sorted and sentinel-terminated** (`last == n_
 
 ---
 
-## Supplying a **custom tokenizer** function
+## [Supplying a custom tokenizer function](@id quickstart_custom_tokenizer)
 
 Any callable `f(::AbstractString) -> Vector{String}` can replace the built-ins.  
 Below we split on whitespace **and** the dash "‐" character:
@@ -247,6 +247,10 @@ wc = get_corpus(bund, :word)
 @show map(tid -> wc.vocabulary.string(tid), wc.token_ids)
 ```
 
+If you want to plug in an existing tokenizer package (WordTokenizers.jl, BytePairEncoding.jl, etc.), see
+[Using Existing Tokenizers](@ref guide_existing_tokenizers). If you only need the built-in tokenizers, see
+[Built-in tokenizers](@ref built_in_tokenizers).
+
 ### Tips for custom tokenisers
 
 | Requirement | Guideline |
@@ -264,7 +268,7 @@ wc = get_corpus(bund, :word)
 |---------|---------|-----|
 | Passing `config=` **and** keyword overrides | `ErrorException: Pass either config= or per-field keywords, not both.` | Pick one method; never both. |
 | `record_paragraph_offsets = true` but `preserve_newlines = false` | Warning and paragraphs not recorded. | Enable `preserve_newlines` (done automatically with a warning). |
-| Unsupported `tokenizer_name` symbol | `AssertionError` | Check `TOKENIZERS` or supply a callable. |
+| Unsupported `tokenizer_name` symbol | `AssertionError` | See [Built-in tokenizers](@ref built_in_tokenizers). |
 
 ---
 

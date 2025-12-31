@@ -2,8 +2,10 @@
 
 # Alignment helpers
 
-Many downstream tasks need to **project annotations or errors between tokenisation levels** : eg 'Which **word** does byte 123
-belong to?'. KeemenaPreprocessing encapsulates these look-ups in a small record:
+Many downstream tasks need to **project annotations or errors between tokenisation levels**: eg "Which **word** does byte 123 belong to?".
+For the sentinel and monotonicity rules that alignment assumes, see [Offsets: sentinel conventions by level](@ref offsets_sentinels).
+
+KeemenaPreprocessing encapsulates these look-ups in a small record:
 
 ```julia
 struct CrossMap
