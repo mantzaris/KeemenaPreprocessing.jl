@@ -18,8 +18,10 @@ Its **only required argument is `sources`** (strings, file paths, URLs, or any i
 ```julia
 using KeemenaPreprocessing
 
-bund = preprocess_corpus("my_corpus.txt") #one-liner
-@show bund.vocab_size
+bund = preprocess_corpus("my_corpus.txt")
+
+word_vocabulary = bund.levels[:word].vocabulary
+@show length(word_vocabulary.id_to_token_strings)
 ```
 
 ---
