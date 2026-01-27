@@ -128,3 +128,32 @@ yet you still need strict memory bounds during preprocessing.
 It can be downloaded from the general registry: `import Pkg; Pkg.add("KeemenaPreprocessing")`, or pressing ']' and then typing `add KeemenaPreprocessing` and then back in the REPL prompt `using KeemenaPreprocessing`.
 
 For the Dev version: open the Julia REPL, get into package mode pressing ] and put: add https://github.com/mantzaris/KeemenaPreprocessing.jl
+
+
+---
+
+# Contributing to KeemenaPreprocessing.jl
+
+Feel free to contribute and collaboration is encouraged.
+
+## How to contribute
+### Reporting bugs
+Please open a GitHub issue and include:
+- Julia version
+- KeemenaPreprocessing.jl version (from Project.toml or `Pkg.status()`)
+- A minimal reproducible example
+- Expected behavior vs actual behavior with the error messages
+
+### Proposing changes
+Open an issue first if the change is large or affects the public API, so we can agree on direction before doing all the work and finding out that a modified plan would have been better
+
+### Pull requests
+1. Fork the repository and create a feature branch
+2. Keep pull requests focused (one logical change per PR) as it makes review easier
+3. Add tests for bug fixes and new features and putting clear test names helps
+4. Update documentation if behavior or API changes
+5. Ensure CI is green
+
+
+## Community guidelines
+Please be respectful and constructive. This project follows the Julia Community Standards

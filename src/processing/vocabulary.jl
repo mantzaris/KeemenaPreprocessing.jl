@@ -124,7 +124,7 @@ Raises an informative error if the special is missing.
 """
 special_token_id(vocab::Vocabulary, sym::Symbol) =
     get(vocab.special_tokens, sym) do
-        throw(ArgumentError("Special token : (sym) not present; have  (keys(vocab.special_tokens))"))
+        throw(ArgumentError("Special token : $(sym) not present; have $(keys(vocab.special_tokens))"))
     end
 
 

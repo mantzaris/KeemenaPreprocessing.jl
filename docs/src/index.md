@@ -68,7 +68,28 @@ bundle = preprocess_corpus("data/raw.txt"; config = cfg)
 * **Streaming** : channels, chunk sizes, memory planning
 * **Saving & loading** : JLD2 helpers for long-running jobs
 
-
-
 *  See the [Guides](guides/quickstart.md) for worked examples  
 *  Full API in the [reference](api/index.md)
+
+---
+
+# Code of Conduct
+
+This project follows the Julia Community Standards:
+https://julialang.org/community/standards/
+
+We expect all participants in this repository (issues, pull requests, discussions)
+to maintain a welcoming and constructive environment.
+
+## Enforcement
+Project maintainers may edit or remove comments, close issues, or reject contributions
+that violate this Code of Conduct.
+
+---
+
+# Contributing
+
+Contributions are very much welcome. Please try to make each PR focused one a single improvement or issue fix. For larger issues please 
+open an issue so that a plan can be worked on with others to make sure that the direction is agreed upon so that a the PR is merged being 
+expected. If you would like to propose or request features not present so that maintainers are aware of the need please also feel free to 
+do so.
