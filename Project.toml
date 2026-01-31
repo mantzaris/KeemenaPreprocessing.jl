@@ -1,7 +1,7 @@
 name = "KeemenaPreprocessing"
 uuid = "f4ce45ae-2b88-40b3-ad81-d2d70f7eb3a1"
 authors = ["Alexander V. Mantzaris"]
-version = "0.1.0"
+version = "0.1.1"
 
 [deps]
 CodecZlib = "944b1d66-785c-5afd-91f1-9de20f533193"
