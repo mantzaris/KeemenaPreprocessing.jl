@@ -13,7 +13,7 @@ authors:
 affiliations:
   - name: "Department of Statistics and Data Science, University of Central Florida (UCF), USA"
     index: 1
-date: July 7 2025
+date: 7 July 2025
 bibliography: paper.bib
 ---
 
