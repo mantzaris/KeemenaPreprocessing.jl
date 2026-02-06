@@ -213,3 +213,112 @@ println(ids)
 ```
 
 
+## Using a Python tokenizer
+
+KeemenaPreprocessing accepts a tokenizer as a callable with the shape:
+
+`tokenizer(text::AbstractString)::Vector{String}`
+
+That callable can wrap a Python tokenizer via PythonCall.jl. This minimal example uses only Python's standard library (`re`), so it proves the Julia-Python bridge without requiring any external Python tokenizer packages.
+
+```julia
+using KeemenaPreprocessing
+using PythonCall
+
+@pyexec """
+import re as _re
+_pattern = _re.compile(r"\\w+|[^\\w\\s]", flags=_re.UNICODE)
+
+def python_regex_tokenizer(text: str, _pattern=_pattern):
+    return _pattern.findall(text)
+""" => python_regex_tokenizer
+
+python_regex_tokens(text::AbstractString)::Vector{String} =
+    pyconvert(Vector{String}, python_regex_tokenizer(String(text)))
+
+documents = [
+    "Hello, world! This is a test.",
+    "Email me at example@test.com and visit https://example.com.",
+    "Mr. Smith can't attend today; he's busy.",
+]
+
+cfg = PreprocessConfiguration(
+    tokenizer_name = python_regex_tokens,
+    record_sentence_offsets = true,
+    minimum_token_frequency = 1,
+)
+
+bundle = preprocess_corpus(documents; config = cfg)
+
+println("Levels present: ", collect(keys(bundle.levels)))
+println("Token count: ", length(get_corpus(bundle, :word).token_ids))
+println("Sample tokens: ", python_regex_tokens(documents[3]))
+```
+
+The returned token stream is stored under Keemena's :word level.
+Swapping in an existing Python tokenizer follows the same wrapper shape so only the Python callable changes.
+
+
+
+## Python tokenizer via spaCy (python dependency)
+
+KeemenaPreprocessing accepts a tokenizer callable with the shape:
+
+`tokenizer(text::AbstractString)::Vector{String}`
+
+Here is the same bridge pattern as the stdlib example, but using spaCy. This uses `spacy.blank("en")`, so it does not download any language models.
+
+If spaCy is not installed in the Python environment used by PythonCall, the snippet prints a short suggestion to install it via Julia's CondaPkg manager.
+
+```julia
+using KeemenaPreprocessing
+using PythonCall
+
+# try to import spaCy (optional dependency)
+python_spacy = nothing
+try
+    python_spacy = pyimport("spacy")
+catch error
+    println("spaCy is not available in PythonCall's Python environment")
+    println("Install it using Julia's CondaPkg, then restart.")
+    return
+end
+
+# a blank English pipeline (no model downloads)
+python_spacy_pipeline = python_spacy.blank("en")
+
+# Define a tiny Python helper that returns List[str]
+@pyexec """
+def spacy_tokens(nlp, text):
+    doc = nlp(text)
+    return [token.text for token in doc]
+""" => spacy_tokens
+
+python_spacy_tokens = spacy_tokens
+
+# Wrap as a Julia callable matching Keemena's tokenizer contract
+function spacy_blank_en_tokens(text::AbstractString)::Vector{String}
+    python_tokens = python_spacy_tokens(python_spacy_pipeline, String(text))
+    return pyconvert(Vector{String}, python_tokens)
+end
+
+documents = [
+    "Hello, world! This is a test.",
+    "Email me at example@test.com and visit https://example.com.",
+    "Mr. Smith can't attend today; he's busy.",
+]
+
+cfg = PreprocessConfiguration(
+    tokenizer_name = spacy_blank_en_tokens,
+    record_sentence_offsets = true,
+    minimum_token_frequency = 1,
+)
+
+bundle = preprocess_corpus(documents; config = cfg)
+
+println("Levels present: ", collect(keys(bundle.levels)))
+println("Token count: ", length(get_corpus(bundle, :word).token_ids))
+println("Sample tokens: ", spacy_blank_en_tokens(documents[3]))
+```
+
+The returned token stream is stored under this package's :word level and you can swap with a different Python tokenizer by changing the Python callable.
