@@ -1,5 +1,5 @@
 # KeemenaPreprocessing
-
+[![DOI](https://joss.theoj.org/papers/10.21105/joss.09348/status.svg)](https://doi.org/10.21105/joss.09348)
 [![License: MIT](https://img.shields.io/badge/License-MIT-green.svg)](LICENSE)
 <!-- [![Stable](https://img.shields.io/badge/docs-stable-blue.svg)](https://mantzaris.github.io/KeemenaPreprocessing.jl/stable/) -->
 [![Dev](https://img.shields.io/badge/docs-dev-blue.svg)](https://mantzaris.github.io/KeemenaPreprocessing.jl/dev/)
