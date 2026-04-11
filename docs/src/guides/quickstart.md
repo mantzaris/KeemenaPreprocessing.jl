@@ -60,6 +60,9 @@ bund = preprocess_corpus(docs;
 
 ## Subwords (integrated path)
 
+If you want a single import and a clean "preprocess + subwords + bundle"
+workflow, this is the default path:
+
 ```julia
 using KeemenaPreprocessing
 
@@ -71,7 +74,7 @@ docs = [
 cfg = PreprocessConfiguration(
     subword = SubwordOptions(
         source = :core_bpe_en,
-        mode = :native,
+        mode = :tokenizer_native,
         level_name = :subword,
     ),
 )
@@ -80,6 +83,43 @@ bund = preprocess_corpus(docs; config = cfg)
 
 subword_ids = get_token_ids(bund, :subword)
 offsets = get_subword_offsets(bund)
+```
+
+How to choose mode:
+
+* Use `mode = :tokenizer_native` when you want ids compatible with the
+  underlying tokenizer (common for pretrained model workflows).
+* Use `mode = :bundle_reindexed` when you want corpus-owned ids/vocabulary
+  managed by KeemenaPreprocessing.
+
+Example: bundle-owned ids/vocabulary
+
+```julia
+cfg = PreprocessConfiguration(
+    minimum_token_frequency = 2,
+    subword = SubwordOptions(
+        source = :core_bpe_en,
+        mode = :bundle_reindexed,
+        level_name = :subword,
+    ),
+)
+
+bund = preprocess_corpus(docs; config = cfg)
+subword_ids = get_token_ids(bund, :subword)
+```
+
+If you want integrated preprocessing but explicit tokenizer loading, you can
+also do:
+
+```julia
+using KeemenaPreprocessing
+using KeemenaSubwords
+
+tok = load_tokenizer(:core_bpe_en)
+cfg = PreprocessConfiguration(
+    subword = SubwordOptions(source = tok, mode = :tokenizer_native),
+)
+bund = preprocess_corpus(docs; config = cfg)
 ```
 
 For details and advanced usage, see [Subwords via KeemenaPreprocessing](@ref guide_subwords).

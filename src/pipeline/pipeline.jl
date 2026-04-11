@@ -157,7 +157,7 @@ end
 function _preprocess_subword_core(sources,
                                   cfg::PreprocessConfiguration;
                                   save_to::Union{Nothing,String}=nothing)
-    bundle = preprocess_subword_native(sources, cfg)
+    bundle = preprocess_subword(sources, cfg)
     save_to !== nothing && save_preprocess_bundle(bundle, save_to)
     return bundle
 end

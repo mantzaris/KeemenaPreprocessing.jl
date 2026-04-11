@@ -93,7 +93,7 @@ record offsets, assemble bundle.
 
 ---
 
-## Subwords via KeemenaPreprocessing (Phase 1)
+## Subwords via KeemenaPreprocessing
 
 ```julia
 using KeemenaPreprocessing
@@ -101,19 +101,24 @@ using KeemenaPreprocessing
 cfg = PreprocessConfiguration(
     subword = SubwordOptions(
         source = :core_bpe_en,   # built-in KeemenaSubwords model key
-        mode = :native,
+        mode = :tokenizer_native,
         level_name = :subword,
     ),
 )
 
 bundle = preprocess_corpus(["Hello world"]; config = cfg)
 
-subword_ids = get_token_ids(bundle, :subword)
+subword_ids_tokenizer_space = get_token_ids(bundle, :subword)
 offsets = get_subword_offsets(bundle)
 ```
 
-This path preserves tokenizer-native ids and stores subword-only artifacts
-(offsets/masks/metadata) in `bundle.extras`.
+Subword modes:
+
+* `mode = :tokenizer_native` keeps tokenizer-native ids (aliases: `:native`, `:tokenizer`).
+* `mode = :bundle_reindexed` rebuilds ids/vocabulary inside KeemenaPreprocessing from tokenizer pieces
+  (aliases: `:corpus`, `:bundle`).
+
+Both modes store subword-only artifacts (offsets/masks/metadata) in `bundle.extras`.
 
 ---
 

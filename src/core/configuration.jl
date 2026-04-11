@@ -4,7 +4,7 @@
 """
     SubwordOptions(; source,
                      format = :auto,
-                     mode = :native,
+                     mode = :tokenizer_native,
                      level_name = :subword,
                      add_special_tokens = true,
                      apply_tokenization_view = true,
@@ -14,8 +14,36 @@
 Configuration for first-party subword processing routed through
 `KeemenaSubwords`.
 
-Phase 1 supports `mode = :native`, preserving tokenizer-native ids.
+Supported canonical modes:
+
+* `:tokenizer_native` - preserve tokenizer-native ids.
+* `:bundle_reindexed` - segment with tokenizer pieces, then rebuild ids/vocab
+  inside KeemenaPreprocessing.
+
+Compatibility aliases are accepted:
+
+* `:native`   -> `:tokenizer_native`
+* `:corpus`   -> `:bundle_reindexed`
+* `:tokenizer` -> `:tokenizer_native`
+* `:bundle`    -> `:bundle_reindexed`
 """
+const _SUBWORD_MODE_ALIASES = Dict(
+    :tokenizer_native => :tokenizer_native,
+    :bundle_reindexed => :bundle_reindexed,
+    :native => :tokenizer_native,
+    :corpus => :bundle_reindexed,
+    :tokenizer => :tokenizer_native,
+    :bundle => :bundle_reindexed,
+)
+
+function _canonical_subword_mode(mode::Symbol)::Symbol
+    canonical = get(_SUBWORD_MODE_ALIASES, mode, nothing)
+    canonical === nothing && error(
+        "Unsupported SubwordOptions mode=:$(mode). Supported modes are " *
+        ":tokenizer_native and :bundle_reindexed (aliases: :native, :corpus, :tokenizer, :bundle).")
+    return canonical
+end
+
 struct SubwordOptions
     source                  :: Any
     format                  :: Symbol
@@ -30,7 +58,7 @@ end
 function SubwordOptions(;
         source,
         format::Symbol = :auto,
-        mode::Symbol = :native,
+        mode::Symbol = :tokenizer_native,
         level_name::Symbol = :subword,
         add_special_tokens::Bool = true,
         apply_tokenization_view::Bool = true,
@@ -38,9 +66,9 @@ function SubwordOptions(;
         return_masks::Bool = true)
 
     source === nothing && error("SubwordOptions requires a non-nothing source")
-    mode == :native || error("SubwordOptions mode=:$(mode) is not supported yet; use :native")
+    canonical_mode = _canonical_subword_mode(mode)
     return SubwordOptions(
-        source, format, mode, level_name, add_special_tokens,
+        source, format, canonical_mode, level_name, add_special_tokens,
         apply_tokenization_view, return_offsets, return_masks)
 end
 
@@ -186,7 +214,7 @@ are grouped below by the stage they affect.
 |---------|---------|---------|
 | `tokenizer_name` | `:whitespace` | One of `TOKENIZERS` **or** a callable. |
 | `preserve_empty_tokens` | `false` | Keep zero-length tokens. |
-| `subword` | `nothing` | Activate first-party subword flow via `SubwordOptions(...)` (Phase 1 supports `mode = :native`). |
+| `subword` | `nothing` | Activate first-party subword flow via `SubwordOptions(...)` (`mode = :tokenizer_native` or `:bundle_reindexed`; aliases `:native` / `:corpus` accepted). |
 
 # Vocabulary construction
 | keyword | default | purpose |

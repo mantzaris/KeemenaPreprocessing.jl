@@ -3,13 +3,14 @@ module _Subwords
 using ..KeemenaPreprocessing:
     PreprocessConfiguration, SubwordOptions,
     Vocabulary, Corpus, LevelBundle,
-    PipelineMetadata, PreprocessBundle
+    PipelineMetadata, PreprocessBundle,
+    build_vocabulary
 
 import KeemenaSubwords
 
 
 """
-Artifacts produced by `subword = SubwordOptions(...)` native-mode preprocessing.
+Artifacts produced by `subword = SubwordOptions(...)` preprocessing.
 """
 struct SubwordArtifacts
     tokenization_texts::Vector{String}
@@ -74,10 +75,60 @@ function _native_vocabulary(tokenizer)
 end
 
 
+function _encode_subword_document(
+    tokenizer,
+    clean_text::String,
+    opts::SubwordOptions,
+)
+    tokenization_text = KeemenaSubwords.tokenization_view(tokenizer, clean_text)
+
+    result = if opts.apply_tokenization_view
+        KeemenaSubwords.encode_result(
+            tokenizer, tokenization_text;
+            add_special_tokens = opts.add_special_tokens,
+            assume_normalized = true,
+            return_offsets = opts.return_offsets,
+            return_masks = opts.return_masks)
+    else
+        KeemenaSubwords.encode_result(
+            tokenizer, clean_text;
+            add_special_tokens = opts.add_special_tokens,
+            assume_normalized = false,
+            return_offsets = opts.return_offsets,
+            return_masks = opts.return_masks)
+    end
+
+    return tokenization_text, result
+end
+
+
+function _corpus_vocab_cfg(cfg::PreprocessConfiguration)::PreprocessConfiguration
+    # For subword corpus mode we intentionally build vocabulary from subword
+    # pieces without sentence-marker injection.
+    return PreprocessConfiguration(
+        minimum_token_frequency = cfg.minimum_token_frequency,
+        special_tokens = cfg.special_tokens,
+        record_sentence_offsets = false,
+    )
+end
+
+
+function _map_tokens_to_ids(tokens::Vector{String}, vocab::Vocabulary)::Vector{Int}
+    unk_id = get(vocab.special_tokens, :unk, nothing)
+    unk_id === nothing && throw(ArgumentError("Vocabulary lacks :unk token"))
+
+    token_ids = Vector{Int}(undef, length(tokens))
+    for (i, tok) in pairs(tokens)
+        token_ids[i] = get(vocab.token_to_id_map, tok, unk_id)
+    end
+    return token_ids
+end
+
+
 function preprocess_subword_native(sources, cfg::PreprocessConfiguration)::PreprocessBundle
     opts = cfg.subword
     opts === nothing && error("preprocess_subword_native requires cfg.subword to be set")
-    opts.mode == :native || error("Only mode=:native is supported in this phase")
+    opts.mode == :tokenizer_native || error("preprocess_subword_native requires mode=:tokenizer_native")
 
     docs = _parent_function(:_load_sources)(sources)
     clean_docs = _parent_function(:clean_documents)(docs, cfg)
@@ -95,23 +146,7 @@ function preprocess_subword_native(sources, cfg::PreprocessConfiguration)::Prepr
 
     for doc in clean_docs
         clean_text = String(doc)
-        tokenization_text = KeemenaSubwords.tokenization_view(tokenizer, clean_text)
-
-        result = if opts.apply_tokenization_view
-            KeemenaSubwords.encode_result(
-                tokenizer, tokenization_text;
-                add_special_tokens = opts.add_special_tokens,
-                assume_normalized = true,
-                return_offsets = opts.return_offsets,
-                return_masks = opts.return_masks)
-        else
-            KeemenaSubwords.encode_result(
-                tokenizer, clean_text;
-                add_special_tokens = opts.add_special_tokens,
-                assume_normalized = false,
-                return_offsets = opts.return_offsets,
-                return_masks = opts.return_masks)
-        end
+        tokenization_text, result = _encode_subword_document(tokenizer, clean_text, opts)
 
         append!(token_ids, result.ids)
         push!(doc_offsets, length(token_ids) + 1)
@@ -159,6 +194,83 @@ function preprocess_subword_native(sources, cfg::PreprocessConfiguration)::Prepr
 end
 
 
+function preprocess_subword_corpus(sources, cfg::PreprocessConfiguration)::PreprocessBundle
+    opts = cfg.subword
+    opts === nothing && error("preprocess_subword_corpus requires cfg.subword to be set")
+    opts.mode == :bundle_reindexed || error("preprocess_subword_corpus requires mode=:bundle_reindexed")
+
+    docs = _parent_function(:_load_sources)(sources)
+    clean_docs = _parent_function(:clean_documents)(docs, cfg)
+    tokenizer = _resolve_subword_tokenizer(opts)
+
+    piece_tokens = String[]
+    doc_offsets = Int[1]
+
+    tokenization_texts = String[]
+    offsets = opts.return_offsets ? Union{Nothing,Vector{Tuple{Int,Int}}}[] : nothing
+    attention_masks = opts.return_masks ? Union{Nothing,Vector{Int}}[] : nothing
+    token_type_ids = opts.return_masks ? Union{Nothing,Vector{Int}}[] : nothing
+    special_tokens_masks = opts.return_masks ? Union{Nothing,Vector{Int}}[] : nothing
+    per_document_metadata = NamedTuple[]
+
+    for doc in clean_docs
+        clean_text = String(doc)
+        tokenization_text, result = _encode_subword_document(tokenizer, clean_text, opts)
+
+        append!(piece_tokens, result.tokens)
+        push!(doc_offsets, length(piece_tokens) + 1)
+        push!(tokenization_texts, tokenization_text)
+        push!(per_document_metadata, result.metadata)
+
+        offsets !== nothing && push!(offsets, result.offsets)
+        attention_masks !== nothing && push!(attention_masks, result.attention_mask)
+        token_type_ids !== nothing && push!(token_type_ids, result.token_type_ids)
+        special_tokens_masks !== nothing && push!(special_tokens_masks, result.special_tokens_mask)
+    end
+
+    vocab = build_vocabulary(piece_tokens; cfg = _corpus_vocab_cfg(cfg))
+    token_ids = _map_tokens_to_ids(piece_tokens, vocab)
+
+    corpus = Corpus(token_ids, doc_offsets, nothing, nothing, nothing, nothing, nothing)
+    level_bundle = LevelBundle(corpus, vocab)
+    levels = Dict(opts.level_name => level_bundle)
+
+    extras = SubwordArtifacts(
+        tokenization_texts,
+        offsets,
+        attention_masks,
+        token_type_ids,
+        special_tokens_masks,
+        per_document_metadata,
+        KeemenaSubwords.model_info(tokenizer),
+        _describe_source(opts.source),
+        opts.format,
+        opts.mode,
+        opts.level_name,
+    )
+
+    return PreprocessBundle(
+        levels;
+        metadata = PipelineMetadata(cfg, v"1.0.0"),
+        extras = extras,
+    )
+end
+
+
+function preprocess_subword(sources, cfg::PreprocessConfiguration)::PreprocessBundle
+    opts = cfg.subword
+    opts === nothing && error("preprocess_subword requires cfg.subword to be set")
+
+    if opts.mode == :tokenizer_native
+        return preprocess_subword_native(sources, cfg)
+    elseif opts.mode == :bundle_reindexed
+        return preprocess_subword_corpus(sources, cfg)
+    end
+
+    error("Unsupported subword mode :$(opts.mode)")
+end
+
+
 function _require_subword_artifacts(bundle::PreprocessBundle)::SubwordArtifacts
     extras = bundle.extras
     extras isa SubwordArtifacts || error(
@@ -195,7 +307,9 @@ end # module _Subwords
 
 import ._Subwords:
     SubwordArtifacts,
+    preprocess_subword,
     preprocess_subword_native,
+    preprocess_subword_corpus,
     get_subword_offsets,
     get_subword_attention_mask,
     get_subword_special_tokens_mask,

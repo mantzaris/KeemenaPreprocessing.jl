@@ -1,12 +1,99 @@
 # [Subwords via KeemenaPreprocessing](@id guide_subwords)
 
-This guide covers the first-party subword path in KeemenaPreprocessing.
+This guide explains how to use subwords from the perspective of a real
+project, not only from an API surface perspective.
 
-Phase 1 supports a native tokenizer-id flow through
-`PreprocessConfiguration(subword = SubwordOptions(...))`.
-In this mode, KeemenaPreprocessing delegates tokenization to KeemenaSubwords,
-stores tokenizer-native ids under a level (default `:subword`), and stores
-offset/mask artifacts in bundle `extras`.
+In plain terms, KeemenaPreprocessing lets you keep your usual corpus-cleaning
+and bundling flow, while still getting modern subword tokenization via
+KeemenaSubwords.
+
+If you are deciding between multiple integration styles, start with the chooser
+below and then jump to the relevant section.
+
+`PreprocessConfiguration(subword = SubwordOptions(...))` supports two canonical
+modes:
+
+* `:tokenizer_native` - keep tokenizer-native ids.
+* `:bundle_reindexed` - segment with tokenizer pieces, then rebuild ids/vocab
+  inside KeemenaPreprocessing.
+
+Compatibility aliases:
+
+* `:native` -> `:tokenizer_native`
+* `:corpus` -> `:bundle_reindexed`
+* `:tokenizer` -> `:tokenizer_native`
+* `:bundle` -> `:bundle_reindexed`
+
+Both modes store subword artifacts (offsets/masks/metadata) in bundle `extras`.
+
+---
+
+## Which call path should you use?
+
+Most users should start with the first row, then move to the others only if
+they need more direct tokenizer control.
+
+| User goal | Recommended call path | Why |
+|---|---|---|
+| I want one package for preprocessing + subwords (default user path). | `using KeemenaPreprocessing` then `preprocess_corpus(...; config = PreprocessConfiguration(subword = SubwordOptions(...)))` | Single import, corpus bundle outputs, stable accessor helpers. |
+| I want integrated preprocessing but explicit tokenizer control. | `using KeemenaPreprocessing` + `using KeemenaSubwords`, then pass `SubwordOptions(source = tokenizer, ...)` | Keep bundle workflow while controlling tokenizer loading/selection directly. |
+| I want full manual tokenizer workflows without bundle/vocabulary assembly. | `using KeemenaSubwords` then `load_tokenizer(...)` + `encode_result(...)` / `quick_encode_batch(...)` | Lowest-level control for model-facing tokenization pipelines. |
+| I already have a callable-tokenizer integration and want to keep it unchanged. | `PreprocessConfiguration(tokenizer_name = keemena_callable(tokenizer))` | Backward-compatible legacy bridge; primary level remains `:word`. |
+
+Mode guidance inside the first-party subword path:
+
+* Use `mode = :tokenizer_native` for pretrained-tokenizer-compatible ids.
+* Use `mode = :bundle_reindexed` when KeemenaPreprocessing should own ids/vocab.
+
+---
+
+## Typical user scenarios
+
+If you are fine-tuning or evaluating a pretrained model and need tokenizer id
+compatibility, use:
+
+- `subword = SubwordOptions(..., mode = :tokenizer_native)`
+
+You keep ids exactly as the tokenizer defines them, which makes it safer to
+feed outputs into model code that expects that id space.
+
+If you are building a corpus-specific vocabulary and want KeemenaPreprocessing
+to own the id mapping, use:
+
+- `subword = SubwordOptions(..., mode = :bundle_reindexed)`
+
+In this mode, KeemenaSubwords still does segmentation, but the final ids and
+vocabulary are rebuilt by KeemenaPreprocessing (honoring settings like
+`minimum_token_frequency` and `special_tokens`).
+
+If you need full low-level control over tokenizers (for example, standalone
+batch encoding utilities without bundle assembly), use KeemenaSubwords directly.
+
+---
+
+## Mode choice in plain language
+
+### `:tokenizer_native`
+
+Choose this when your downstream stack already "speaks tokenizer-native ids".
+
+You get:
+
+- ids that match direct `KeemenaSubwords.encode_result(...)`,
+- offsets/masks stored in bundle extras,
+- easier parity checks between integrated and direct-tokenizer workflows.
+
+### `:bundle_reindexed`
+
+Choose this when your downstream stack should use a corpus-owned vocabulary
+inside KeemenaPreprocessing.
+
+You get:
+
+- tokenizer-quality segmentation,
+- bundle-owned vocabulary + ids,
+- frequency filtering and special-token policy controlled by
+  `PreprocessConfiguration`.
 
 ---
 
@@ -23,7 +110,7 @@ docs = [
 cfg = PreprocessConfiguration(
     subword = SubwordOptions(
         source = :core_bpe_en,          # model key, path, FilesSpec, NamedTuple, or tokenizer object
-        mode = :native,                 # Phase 1: native ids
+        mode = :tokenizer_native,       # keep tokenizer-native ids
         level_name = :subword,          # default
         add_special_tokens = true,
         apply_tokenization_view = true,
@@ -41,13 +128,68 @@ specials = get_subword_special_tokens_mask(bundle)
 meta     = get_subword_metadata(bundle)
 ```
 
+For bundle-owned ids:
+
+```julia
+cfg = PreprocessConfiguration(
+    subword = SubwordOptions(
+        source = :core_bpe_en,
+        mode = :bundle_reindexed,   # rebuild ids/vocab inside KeemenaPreprocessing
+        level_name = :subword,
+    ),
+    minimum_token_frequency = 2,
+)
+```
+
+---
+
+## Integrated workflow with explicit tokenizer control
+
+Use this when you want KeemenaPreprocessing bundles, but you also want to
+control tokenizer loading directly (for example pinned local files or a
+preloaded tokenizer object):
+
+```julia
+using KeemenaPreprocessing
+using KeemenaSubwords
+
+tok = load_tokenizer(:core_bpe_en)
+
+cfg = PreprocessConfiguration(
+    subword = SubwordOptions(
+        source = tok,
+        mode = :tokenizer_native,
+        level_name = :subword,
+    ),
+)
+
+bundle = preprocess_corpus(["A realistic paragraph goes here."]; config = cfg)
+```
+
+---
+
+## KeemenaSubwords-only workflow (no bundle layer)
+
+If you do not need `PreprocessBundle`, you can call KeemenaSubwords directly:
+
+```julia
+using KeemenaSubwords
+
+tok = load_tokenizer(:core_bpe_en)
+result = encode_result(tok, "Some text"; return_offsets = true, return_masks = true)
+```
+
+This path is useful when you want raw tokenizer-centric workflows without
+corpus vocabulary construction.
+
 ---
 
 ## What gets stored where
 
 - `bundle.levels[:subword]`:
-  - tokenizer-native token ids (flattened across documents),
-  - vocabulary built from the tokenizer's id/token table,
+  - token ids (tokenizer-native in `:tokenizer_native`, bundle-reindexed in
+    `:bundle_reindexed`),
+  - level vocabulary matching the selected mode,
   - document offsets for token slicing.
 - `bundle.extras` (via accessor helpers):
   - per-document subword offsets,
@@ -118,8 +260,7 @@ In this legacy callable path, the primary token stream remains under `:word`.
 
 ---
 
-## Current Phase 1 constraints
+## Current constraints
 
-- `SubwordOptions(mode = :native)` is supported.
 - Streaming entrypoints do not yet support `subword = SubwordOptions(...)`.
   Use `preprocess_corpus` for now.

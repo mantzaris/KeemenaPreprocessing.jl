@@ -81,30 +81,65 @@ Arguments are grouped by stage; omit any keyword to keep its default.
 |---------|---------|-------------|
 | `tokenizer_name` | `:whitespace` | One of [`TOKENIZERS`](@ref built_in_tokenizers) **or** a custom `f(::String)` callable. |
 | `preserve_empty_tokens` | `false` | Keep zero-length tokens if the tokenizer returns them. |
-| `subword` | `nothing` | Activate first-party subword integration with `SubwordOptions(...)` (Phase 1 supports `mode = :native`). |
+| `subword` | `nothing` | Activate first-party subword integration with `SubwordOptions(...)` using `mode = :tokenizer_native` or `:bundle_reindexed` (aliases `:native` / `:corpus` accepted). |
 
 ### First-party subwords
 
-Use `subword = SubwordOptions(...)` when you want tokenizer-native ids from
-KeemenaSubwords stored directly in the bundle.
+Think of `subword = SubwordOptions(...)` as the "integrated subword switch".
+You still configure and run KeemenaPreprocessing as usual, but tokenization is
+handled through KeemenaSubwords under the hood.
+
+If you need one-package ergonomics for corpus preprocessing plus subwords, start
+here.
+
+If you already have a tokenizer object loaded and want explicit control, pass it
+through `source = tokenizer`.
+
+If you are using the older callable bridge and do not want to migrate yet, keep
+using `tokenizer_name = keemena_callable(tokenizer)`; that path is still valid.
+
+Example (most common path: tokenizer-native ids):
 
 ```julia
 cfg = PreprocessConfiguration(
     subword = SubwordOptions(
         source = :core_bpe_en,
-        mode = :native,
+        mode = :tokenizer_native,
         level_name = :subword,
     ),
 )
 ```
 
-Notes:
+Mode choice in practice:
 
-* `mode = :native` is currently the supported mode.
-* When `subword !== nothing`, call `preprocess_corpus` (streaming is not yet supported).
-* Use the subword artifact helpers (`get_subword_offsets`, `get_subword_attention_mask`, etc.)
-  to read masks/offsets from bundle extras.
-* See [Subwords via KeemenaPreprocessing](@ref guide_subwords) for end-to-end examples.
+* `mode = :tokenizer_native`:
+  use this when downstream model code expects tokenizer-native ids.
+  This is usually the right choice for pretrained-tokenizer workflows.
+* `mode = :bundle_reindexed`:
+  use this when KeemenaPreprocessing should own the final vocabulary and ids.
+  KeemenaSubwords still segments text into pieces, but the bundle remaps ids
+  with your `minimum_token_frequency` and `special_tokens` settings.
+
+Example (bundle-owned ids/vocab):
+
+```julia
+cfg = PreprocessConfiguration(
+    minimum_token_frequency = 2,
+    special_tokens = Dict(:unk => "<UNK>", :pad => "<PAD>"),
+    subword = SubwordOptions(
+        source = :core_bpe_en,
+        mode = :bundle_reindexed,
+        level_name = :subword,
+    ),
+)
+```
+
+Additional notes:
+
+* Compatibility aliases are accepted (`:native`, `:corpus`, `:tokenizer`, `:bundle`).
+* When `subword !== nothing`, use `preprocess_corpus` (streaming is not yet supported).
+* Use subword helpers (`get_subword_offsets`, `get_subword_attention_mask`, `get_subword_special_tokens_mask`, `get_subword_metadata`) rather than reading `extras` directly.
+* See [Subwords via KeemenaPreprocessing](@ref guide_subwords) for full end-to-end walkthroughs and decision guidance.
 
 ### Vocabulary construction
 

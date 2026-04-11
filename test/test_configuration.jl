@@ -54,7 +54,20 @@ end
     # subword must be either nothing or SubwordOptions
     @test_throws ErrorException KeemenaPreprocessing.PreprocessConfiguration(subword = :invalid)
 
-    # only native mode is supported in phase 1
+    opts_default = KeemenaPreprocessing.SubwordOptions(source = :core_bpe_en)
+    @test opts_default.mode == :tokenizer_native
+
+    # compatibility aliases are accepted and canonicalized
+    @test KeemenaPreprocessing.SubwordOptions(source = :core_bpe_en, mode = :native).mode ==
+          :tokenizer_native
+    @test KeemenaPreprocessing.SubwordOptions(source = :core_bpe_en, mode = :corpus).mode ==
+          :bundle_reindexed
+
+    # canonical long names are accepted
+    @test KeemenaPreprocessing.SubwordOptions(
+        source = :core_bpe_en, mode = :bundle_reindexed).mode == :bundle_reindexed
+
+    # invalid mode should error
     @test_throws ErrorException KeemenaPreprocessing.SubwordOptions(
-        source = :core_bpe_en, mode = :corpus)
+        source = :core_bpe_en, mode = :invalid_mode)
 end

@@ -1,4 +1,4 @@
-@testset "Subword Integration (Phase 1 native mode)" begin
+@testset "Subword Integration" begin
     using KeemenaSubwords
 
     function _hf_wordpiece_fixture_path()
@@ -14,7 +14,7 @@
 
         @test opts.source == fixture
         @test opts.format == :hf_tokenizer_json
-        @test opts.mode == :native
+        @test opts.mode == :tokenizer_native
         @test opts.level_name == :subword
         @test opts.add_special_tokens
         @test opts.apply_tokenization_view
@@ -22,7 +22,7 @@
         @test opts.return_masks
     end
 
-    @testset "preprocess_corpus native subword path" begin
+    @testset "preprocess_corpus tokenizer-native subword path" begin
         fixture = _hf_wordpiece_fixture_path()
         docs = ["Hello world", "hello, world!"]
 
@@ -30,7 +30,7 @@
             subword = KeemenaPreprocessing.SubwordOptions(
                 source = fixture,
                 format = :hf_tokenizer_json,
-                mode = :native,
+                mode = :tokenizer_native,
                 level_name = :subword,
                 add_special_tokens = true,
                 apply_tokenization_view = true,
@@ -72,7 +72,7 @@
         @test length(attn) == length(docs)
         @test length(smask) == length(docs)
         @test meta.level_name == :subword
-        @test meta.mode == :native
+        @test meta.mode == :tokenizer_native
         @test haskey(meta, :tokenizer)
 
         mktempdir() do tmp
@@ -85,6 +85,79 @@
         end
     end
 
+    @testset "preprocess_corpus bundle-reindexed subword path" begin
+        fixture = _hf_wordpiece_fixture_path()
+        docs = [
+            "rarealpha common common",
+            "common rarebeta and common",
+        ]
+
+        cfg = KeemenaPreprocessing.PreprocessConfiguration(
+            minimum_token_frequency = 2,
+            special_tokens = Dict(:unk => "<UNK>", :pad => "<PAD>"),
+            subword = KeemenaPreprocessing.SubwordOptions(
+                source = fixture,
+                format = :hf_tokenizer_json,
+                mode = :bundle_reindexed,
+                level_name = :subword,
+                add_special_tokens = false,
+                apply_tokenization_view = true,
+                return_offsets = true,
+                return_masks = true,
+            ),
+        )
+
+        bundle = KeemenaPreprocessing.preprocess_corpus(docs; config = cfg)
+        @test KeemenaPreprocessing.has_level(bundle, :subword)
+
+        tokenizer = KeemenaSubwords.load_tokenizer(fixture; format = :hf_tokenizer_json)
+        clean_docs = KeemenaPreprocessing.clean_documents(docs, cfg)
+
+        all_tokens = String[]
+        expected_doc_offsets = Int[1]
+        expected_offsets = Vector{Union{Nothing,Vector{Tuple{Int,Int}}}}()
+        expected_attn = Vector{Union{Nothing,Vector{Int}}}()
+        expected_smask = Vector{Union{Nothing,Vector{Int}}}()
+        for doc in clean_docs
+            tokenization_text = KeemenaSubwords.tokenization_view(tokenizer, doc)
+            result = KeemenaSubwords.encode_result(
+                tokenizer, tokenization_text;
+                add_special_tokens = false,
+                assume_normalized = true,
+                return_offsets = true,
+                return_masks = true,
+            )
+            append!(all_tokens, result.tokens)
+            push!(expected_doc_offsets, length(all_tokens) + 1)
+            push!(expected_offsets, result.offsets)
+            push!(expected_attn, result.attention_mask)
+            push!(expected_smask, result.special_tokens_mask)
+        end
+
+        vocab_cfg = KeemenaPreprocessing.PreprocessConfiguration(
+            minimum_token_frequency = cfg.minimum_token_frequency,
+            special_tokens = cfg.special_tokens,
+            record_sentence_offsets = false,
+        )
+        expected_vocab = KeemenaPreprocessing.build_vocabulary(all_tokens; cfg = vocab_cfg)
+        expected_unk = expected_vocab.special_tokens[:unk]
+        expected_ids = [get(expected_vocab.token_to_id_map, tok, expected_unk) for tok in all_tokens]
+
+        token_ids = KeemenaPreprocessing.get_token_ids(bundle, :subword)
+        @test token_ids == expected_ids
+        @test bundle.levels[:subword].corpus.document_offsets == expected_doc_offsets
+        @test bundle.levels[:subword].vocabulary.id_to_token_strings == expected_vocab.id_to_token_strings
+        @test bundle.levels[:subword].vocabulary.special_tokens == expected_vocab.special_tokens
+
+        @test KeemenaPreprocessing.get_subword_offsets(bundle) == expected_offsets
+        @test KeemenaPreprocessing.get_subword_attention_mask(bundle) == expected_attn
+        @test KeemenaPreprocessing.get_subword_special_tokens_mask(bundle) == expected_smask
+
+        meta = KeemenaPreprocessing.get_subword_metadata(bundle)
+        @test meta.mode == :bundle_reindexed
+        @test meta.level_name == :subword
+    end
+
     @testset "source forms and resolver coverage" begin
         fixture = _hf_wordpiece_fixture_path()
         docs = ["Tokenizer source forms should resolve consistently.", "Café HELLO, world!"]
@@ -93,7 +166,7 @@
             subword = KeemenaPreprocessing.SubwordOptions(
                 source = fixture,
                 format = :hf_tokenizer_json,
-                mode = :native,
+                mode = :tokenizer_native,
                 level_name = :subword,
                 add_special_tokens = true,
                 apply_tokenization_view = true,
@@ -123,7 +196,7 @@
                 subword = KeemenaPreprocessing.SubwordOptions(
                     source = src,
                     format = :hf_tokenizer_json,
-                    mode = :native,
+                    mode = :tokenizer_native,
                     level_name = :subword,
                     add_special_tokens = true,
                     apply_tokenization_view = true,
@@ -140,7 +213,7 @@
         cfg_symbol = KeemenaPreprocessing.PreprocessConfiguration(
             subword = KeemenaPreprocessing.SubwordOptions(
                 source = :core_bpe_en,
-                mode = :native,
+                mode = :tokenizer_native,
                 level_name = :subword,
             ),
         )
@@ -156,6 +229,7 @@
             subword = KeemenaPreprocessing.SubwordOptions(
                 source = fixture,
                 format = :hf_tokenizer_json,
+                mode = :native,
                 apply_tokenization_view = false,
                 return_offsets = true,
             ),
@@ -190,7 +264,7 @@
             subword = KeemenaPreprocessing.SubwordOptions(
                 source = fixture,
                 format = :hf_tokenizer_json,
-                mode = :native,
+                mode = :tokenizer_native,
                 level_name = :subword,
                 add_special_tokens = true,
                 apply_tokenization_view = true,
@@ -278,7 +352,7 @@
             subword = KeemenaPreprocessing.SubwordOptions(
                 source = fixture,
                 format = :hf_tokenizer_json,
-                mode = :native,
+                mode = :tokenizer_native,
                 level_name = :subword,
                 add_special_tokens = true,
                 apply_tokenization_view = true,
@@ -308,7 +382,7 @@
         @test length(attn) == 1
         @test length(smask) == 1
         @test meta.level_name == :subword
-        @test meta.mode == :native
+        @test meta.mode == :tokenizer_native
 
         tokenizer = KeemenaSubwords.load_tokenizer(fixture; format = :hf_tokenizer_json)
         clean_doc = KeemenaPreprocessing.clean_documents(docs, cfg)[1]
@@ -355,6 +429,81 @@
             @test KeemenaPreprocessing.get_subword_attention_mask(reloaded) == attn
             @test KeemenaPreprocessing.get_subword_special_tokens_mask(reloaded) == smask
         end
+    end
+
+    @testset "common ML/NLP config on one multi-sentence paragraph" begin
+        fixture = _hf_wordpiece_fixture_path()
+        raw_paragraph = """
+        BERT-style NLP pipelines usually keep casing and punctuation for cased tokenizers.
+        This single paragraph includes Café accents, mixedCase tokens, and realistic prose across several sentences.
+        Contact ml-team@example.org and review https://nlp.example.org/docs/v2 for setup notes before training.
+        Final sentence checks end-to-end ids, offsets, masks, and metadata in one common workflow.
+        """
+        docs = [raw_paragraph]
+        @test count(==('.'), raw_paragraph) >= 4
+
+        cfg = KeemenaPreprocessing.PreprocessConfiguration(
+            lowercase = false,
+            strip_accents = false,
+            remove_punctuation = false,
+            replace_urls = false,
+            replace_emails = false,
+            subword = KeemenaPreprocessing.SubwordOptions(
+                source = fixture,
+                format = :hf_tokenizer_json,
+                mode = :tokenizer_native,
+                level_name = :subword,
+                add_special_tokens = true,
+                apply_tokenization_view = true,
+                return_offsets = true,
+                return_masks = true,
+            ),
+        )
+
+        bundle = KeemenaPreprocessing.preprocess_corpus(docs; config = cfg)
+        @test KeemenaPreprocessing.has_level(bundle, :subword)
+
+        clean_doc = KeemenaPreprocessing.clean_documents(docs, cfg)[1]
+        @test occursin("Café", clean_doc)
+        @test occursin("https://nlp.example.org/docs/v2", clean_doc)
+        @test occursin("ml-team@example.org", clean_doc)
+
+        token_ids = KeemenaPreprocessing.get_token_ids(bundle, :subword)
+        offsets = KeemenaPreprocessing.get_subword_offsets(bundle)
+        attn = KeemenaPreprocessing.get_subword_attention_mask(bundle)
+        smask = KeemenaPreprocessing.get_subword_special_tokens_mask(bundle)
+        meta = KeemenaPreprocessing.get_subword_metadata(bundle)
+
+        @test !isempty(token_ids)
+        @test bundle.levels[:subword].corpus.document_offsets == [1, length(token_ids) + 1]
+        @test offsets !== nothing
+        @test attn !== nothing
+        @test smask !== nothing
+        @test length(offsets) == 1
+        @test length(attn) == 1
+        @test length(smask) == 1
+        @test length(offsets[1]) == length(token_ids)
+        @test length(attn[1]) == length(token_ids)
+        @test length(smask[1]) == length(token_ids)
+        @test any(==(1), smask[1])
+        @test meta.mode == :tokenizer_native
+        @test meta.level_name == :subword
+
+        tokenizer = KeemenaSubwords.load_tokenizer(fixture; format = :hf_tokenizer_json)
+        tokenization_text = KeemenaSubwords.tokenization_view(tokenizer, clean_doc)
+        expected = KeemenaSubwords.encode_result(
+            tokenizer, tokenization_text;
+            add_special_tokens = true,
+            assume_normalized = true,
+            return_offsets = true,
+            return_masks = true,
+        )
+
+        @test meta.tokenization_texts[1] == tokenization_text
+        @test token_ids == expected.ids
+        @test offsets[1] == expected.offsets
+        @test attn[1] == expected.attention_mask
+        @test smask[1] == expected.special_tokens_mask
     end
 
     @testset "streaming guard for subword config" begin
