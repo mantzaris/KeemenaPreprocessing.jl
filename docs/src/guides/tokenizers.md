@@ -6,17 +6,23 @@ Instead, it is a preprocessing pipeline: you choose how to tokenize, and Keemena
 If you want a lightweight custom tokenizer function (no external dependencies), see [Quick Start: Supplying a custom tokenizer function](@ref quickstart_custom_tokenizer).
 
 This page shows how to use existing tokenizer packages (eg WordTokenizers.jl, BytePairEncoding.jl) through the generic callable path. KeemenaPreprocessing also ships a small set of built-in tokenizers (`:whitespace`, `:unicode`, `:byte`, `:char`) for convenience with various configurations that should work in most instances.
+For clarity: generic external tokenizers are callable-integrated, while subwords also have a first-party integration backed by the KeemenaSubwords dependency (`subword = SubwordOptions(...)`).
 
 - `:word` is the canonical key for the primary string-token stream produced by `tokenizer_name` (whitespace tokens, callable-tokenizer pieces, grapheme clusters, etc).
 - `:character` is the canonical key for the Unicode scalar-value stream (codepoints) when recorded.
 - `:byte` is the canonical key for the UTF-8 byte stream when recorded.
 - First-party subword integration (`subword = SubwordOptions(...)`) defaults to level `:subword`; see [Subwords via KeemenaPreprocessing](@ref guide_subwords).
 
+Important level-naming clarification:
+
+- If you use the legacy callable bridge for subwords (`tokenizer_name = keemena_callable(tokenizer)`), the primary stream remains under `:word`.
+- If you use first-party subword integration (`subword = SubwordOptions(...)`), the subword stream defaults to `:subword`.
+
 ---
 
 ## Why callables (generic integration)
 
-For generic tokenizer integrations, KeemenaPreprocessing accepts tokenizers as callables rather than integrating tightly with every tokenization ecosystem:
+For generic external tokenizer integrations, KeemenaPreprocessing accepts tokenizers as callables rather than integrating tightly with every tokenization ecosystem:
 
 - Reproducibility: the tokenizer behavior is pinned inside your `PreprocessConfiguration`, rather than being controlled by hidden global defaults.
 - Avoid global state surprises: some tokenizer packages expose globally configurable defaults (changing them can affect other code in the same Julia session)

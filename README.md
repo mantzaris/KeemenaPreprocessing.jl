@@ -58,7 +58,8 @@ Not ideally for:
 - KeemenaPreprocessing focuses on building a deterministic, aligned preprocessing artifact for downstream modeling
 - Tokenizer packages (like WordTokenizers.jl) focus on fast sentence/word splitting and configurable tokenizers, including global configurability via set_tokenizer/set_sentence_splitter
 - BPE/tokenizer-model packages (like BytePairEncoding.jl) focus on subword tokenization methods (including GPT-2 byte-level BPE and tiktoken)
-- KemenaPreprocessing integrates with these via callables rather than hard dependencies, to avoid locking users into upstream conventions and to preserve reproducible pipelines
+- KeemenaPreprocessing integrates generic external tokenizers via callables to avoid tight coupling and preserve reproducible pipelines
+- Subwords are also available through a first-party, dependency-backed integration via KeemenaSubwords (`subword = SubwordOptions(...)`)
 
 * Bundles (portable preprocessing artifacts)
 
@@ -111,6 +112,7 @@ bundle = preprocess_corpus(["Hello world"]; config = cfg)
 
 subword_ids_tokenizer_space = get_token_ids(bundle, :subword)
 offsets = get_subword_offsets(bundle)
+token_type_ids = get_subword_token_type_ids(bundle)
 ```
 
 Subword modes:
@@ -120,7 +122,12 @@ Subword modes:
   (aliases: `:corpus`, `:bundle`).
 * `cleaning_profile = :subword_cooperative` (aliases: `:subword_safe`, `:cooperative`) keeps subword cleaning conservative by disabling lowercasing, accent stripping, punctuation removal, and URL/email/number replacement when `subword !== nothing`.
 
-Both modes store subword-only artifacts (offsets/masks/metadata) in `bundle.extras`.
+Both modes store subword-only artifacts (offsets/masks/token-type-ids/metadata) in `bundle.extras`.
+
+Level naming depends on integration path:
+
+* First-party subword path (`subword = SubwordOptions(...)`) defaults to level `:subword`.
+* Legacy callable bridge path (`tokenizer_name = keemena_callable(tokenizer)`) keeps the primary stream under `:word`.
 
 ---
 

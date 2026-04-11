@@ -62,14 +62,17 @@
 
         offsets = KeemenaPreprocessing.get_subword_offsets(bundle)
         attn = KeemenaPreprocessing.get_subword_attention_mask(bundle)
+        ttype = KeemenaPreprocessing.get_subword_token_type_ids(bundle)
         smask = KeemenaPreprocessing.get_subword_special_tokens_mask(bundle)
         meta = KeemenaPreprocessing.get_subword_metadata(bundle)
 
         @test offsets !== nothing
         @test attn !== nothing
+        @test ttype !== nothing
         @test smask !== nothing
         @test length(offsets) == length(docs)
         @test length(attn) == length(docs)
+        @test length(ttype) == length(docs)
         @test length(smask) == length(docs)
         @test meta.level_name == :subword
         @test meta.mode == :tokenizer_native
@@ -81,6 +84,7 @@
             reloaded = KeemenaPreprocessing.load_preprocess_bundle(path)
             @test KeemenaPreprocessing.get_subword_offsets(reloaded) == offsets
             @test KeemenaPreprocessing.get_subword_attention_mask(reloaded) == attn
+            @test KeemenaPreprocessing.get_subword_token_type_ids(reloaded) == ttype
             @test KeemenaPreprocessing.get_subword_special_tokens_mask(reloaded) == smask
         end
     end
@@ -117,6 +121,7 @@
         expected_doc_offsets = Int[1]
         expected_offsets = Vector{Union{Nothing,Vector{Tuple{Int,Int}}}}()
         expected_attn = Vector{Union{Nothing,Vector{Int}}}()
+        expected_ttype = Vector{Union{Nothing,Vector{Int}}}()
         expected_smask = Vector{Union{Nothing,Vector{Int}}}()
         for doc in clean_docs
             tokenization_text = KeemenaSubwords.tokenization_view(tokenizer, doc)
@@ -131,6 +136,7 @@
             push!(expected_doc_offsets, length(all_tokens) + 1)
             push!(expected_offsets, result.offsets)
             push!(expected_attn, result.attention_mask)
+            push!(expected_ttype, result.token_type_ids)
             push!(expected_smask, result.special_tokens_mask)
         end
 
@@ -151,6 +157,7 @@
 
         @test KeemenaPreprocessing.get_subword_offsets(bundle) == expected_offsets
         @test KeemenaPreprocessing.get_subword_attention_mask(bundle) == expected_attn
+        @test KeemenaPreprocessing.get_subword_token_type_ids(bundle) == expected_ttype
         @test KeemenaPreprocessing.get_subword_special_tokens_mask(bundle) == expected_smask
 
         meta = KeemenaPreprocessing.get_subword_metadata(bundle)
@@ -278,6 +285,7 @@
         )
         @test KeemenaPreprocessing.get_token_ids(bundle_coop, :subword) == expected_coop.ids
         @test KeemenaPreprocessing.get_subword_offsets(bundle_coop)[1] == expected_coop.offsets
+        @test KeemenaPreprocessing.get_subword_token_type_ids(bundle_coop)[1] == expected_coop.token_type_ids
 
         cfg_coop_alias = KeemenaPreprocessing.PreprocessConfiguration(
             cleaning_profile = :subword_safe,
@@ -335,10 +343,12 @@
         tokenizer = KeemenaSubwords.load_tokenizer(fixture; format = :hf_tokenizer_json)
         offsets = KeemenaPreprocessing.get_subword_offsets(bundle_raw)
         attn = KeemenaPreprocessing.get_subword_attention_mask(bundle_raw)
+        ttype = KeemenaPreprocessing.get_subword_token_type_ids(bundle_raw)
         smask = KeemenaPreprocessing.get_subword_special_tokens_mask(bundle_raw)
         meta = KeemenaPreprocessing.get_subword_metadata(bundle_raw)
         @test offsets !== nothing
         @test attn !== nothing
+        @test ttype !== nothing
         @test smask !== nothing
 
         token_ids = KeemenaPreprocessing.get_token_ids(bundle_raw, :subword)
@@ -360,10 +370,12 @@
             @test token_ids[r] == result.ids
             @test offsets[i] == result.offsets
             @test attn[i] == result.attention_mask
+            @test ttype[i] == result.token_type_ids
             @test smask[i] == result.special_tokens_mask
 
             @test length(offsets[i]) == length(result.ids)
             @test length(attn[i]) == length(result.ids)
+            @test length(ttype[i]) == length(result.ids)
             @test length(smask[i]) == length(result.ids)
 
             # Alignment sanity: positive spans should be ordered and inside text bounds.
@@ -419,14 +431,17 @@
 
         offsets = KeemenaPreprocessing.get_subword_offsets(bundle)
         attn = KeemenaPreprocessing.get_subword_attention_mask(bundle)
+        ttype = KeemenaPreprocessing.get_subword_token_type_ids(bundle)
         smask = KeemenaPreprocessing.get_subword_special_tokens_mask(bundle)
         meta = KeemenaPreprocessing.get_subword_metadata(bundle)
 
         @test offsets !== nothing
         @test attn !== nothing
+        @test ttype !== nothing
         @test smask !== nothing
         @test length(offsets) == 1
         @test length(attn) == 1
+        @test length(ttype) == 1
         @test length(smask) == 1
         @test meta.level_name == :subword
         @test meta.mode == :tokenizer_native
@@ -449,9 +464,11 @@
         @test token_ids == expected.ids
         @test offsets[1] == expected.offsets
         @test attn[1] == expected.attention_mask
+        @test ttype[1] == expected.token_type_ids
         @test smask[1] == expected.special_tokens_mask
         @test length(offsets[1]) == length(token_ids)
         @test length(attn[1]) == length(token_ids)
+        @test length(ttype[1]) == length(token_ids)
         @test length(smask[1]) == length(token_ids)
 
         max_pos = ncodeunits(tokenization_text) + 1
@@ -474,6 +491,7 @@
             @test KeemenaPreprocessing.get_token_ids(reloaded, :subword) == token_ids
             @test KeemenaPreprocessing.get_subword_offsets(reloaded) == offsets
             @test KeemenaPreprocessing.get_subword_attention_mask(reloaded) == attn
+            @test KeemenaPreprocessing.get_subword_token_type_ids(reloaded) == ttype
             @test KeemenaPreprocessing.get_subword_special_tokens_mask(reloaded) == smask
         end
     end
@@ -518,6 +536,7 @@
         token_ids = KeemenaPreprocessing.get_token_ids(bundle, :subword)
         offsets = KeemenaPreprocessing.get_subword_offsets(bundle)
         attn = KeemenaPreprocessing.get_subword_attention_mask(bundle)
+        ttype = KeemenaPreprocessing.get_subword_token_type_ids(bundle)
         smask = KeemenaPreprocessing.get_subword_special_tokens_mask(bundle)
         meta = KeemenaPreprocessing.get_subword_metadata(bundle)
 
@@ -525,12 +544,15 @@
         @test bundle.levels[:subword].corpus.document_offsets == [1, length(token_ids) + 1]
         @test offsets !== nothing
         @test attn !== nothing
+        @test ttype !== nothing
         @test smask !== nothing
         @test length(offsets) == 1
         @test length(attn) == 1
+        @test length(ttype) == 1
         @test length(smask) == 1
         @test length(offsets[1]) == length(token_ids)
         @test length(attn[1]) == length(token_ids)
+        @test length(ttype[1]) == length(token_ids)
         @test length(smask[1]) == length(token_ids)
         @test any(==(1), smask[1])
         @test meta.mode == :tokenizer_native
@@ -550,6 +572,7 @@
         @test token_ids == expected.ids
         @test offsets[1] == expected.offsets
         @test attn[1] == expected.attention_mask
+        @test ttype[1] == expected.token_type_ids
         @test smask[1] == expected.special_tokens_mask
     end
 

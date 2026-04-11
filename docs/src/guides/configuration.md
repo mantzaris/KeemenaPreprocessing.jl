@@ -153,7 +153,7 @@ Additional notes:
 * Cleaning profile aliases are accepted (`:subword_safe`, `:cooperative`).
 * If `cleaning_profile = :subword_cooperative` is set without `subword`, configuration falls back to `:classic` with a warning.
 * When `subword !== nothing`, use `preprocess_corpus` (streaming is not yet supported).
-* Use subword helpers (`get_subword_offsets`, `get_subword_attention_mask`, `get_subword_special_tokens_mask`, `get_subword_metadata`) rather than reading `extras` directly.
+* Use subword helpers (`get_subword_offsets`, `get_subword_attention_mask`, `get_subword_token_type_ids`, `get_subword_special_tokens_mask`, `get_subword_metadata`) rather than reading `extras` directly.
 * See [Subwords via KeemenaPreprocessing](@ref guide_subwords) for full end-to-end walkthroughs and decision guidance.
 
 ### Vocabulary construction

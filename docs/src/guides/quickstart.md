@@ -84,6 +84,7 @@ bund = preprocess_corpus(docs; config = cfg)
 
 subword_ids = get_token_ids(bund, :subword)
 offsets = get_subword_offsets(bund)
+token_type_ids = get_subword_token_type_ids(bund)
 ```
 
 How to choose mode:

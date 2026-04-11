@@ -26,6 +26,11 @@ Compatibility aliases:
 
 Both modes store subword artifacts (offsets/masks/metadata) in bundle `extras`.
 
+Level naming depends on integration path:
+
+* First-party subword path (`subword = SubwordOptions(...)`) defaults to level `:subword`.
+* Legacy callable bridge (`tokenizer_name = keemena_callable(tokenizer)`) keeps the primary stream under `:word`.
+
 ---
 
 ## Which call path should you use?
@@ -128,6 +133,7 @@ bundle = preprocess_corpus(docs; config = cfg)
 ids      = get_token_ids(bundle, :subword)
 offsets  = get_subword_offsets(bundle)
 attn     = get_subword_attention_mask(bundle)
+ttype    = get_subword_token_type_ids(bundle)
 specials = get_subword_special_tokens_mask(bundle)
 meta     = get_subword_metadata(bundle)
 ```
@@ -224,6 +230,7 @@ back to `:classic` with a warning.
 - `bundle.extras` (via accessor helpers):
   - per-document subword offsets,
   - attention masks,
+  - token type ids,
   - special token masks,
   - tokenizer metadata and tokenization texts.
 
@@ -235,6 +242,7 @@ Use accessors instead of reading `extras` directly:
 ```julia
 get_subword_offsets(bundle)
 get_subword_attention_mask(bundle)
+get_subword_token_type_ids(bundle)
 get_subword_special_tokens_mask(bundle)
 get_subword_metadata(bundle)
 ```

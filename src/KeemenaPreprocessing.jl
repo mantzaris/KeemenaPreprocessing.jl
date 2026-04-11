@@ -51,6 +51,7 @@ include(joinpath(@__DIR__, "integrations", "subwords.jl"))
 export SubwordArtifacts,
        get_subword_offsets,
        get_subword_attention_mask,
+       get_subword_token_type_ids,
        get_subword_special_tokens_mask,
        get_subword_metadata
 

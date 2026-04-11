@@ -275,7 +275,7 @@ end
 function _require_subword_artifacts(bundle::PreprocessBundle)::SubwordArtifacts
     extras = bundle.extras
     extras isa SubwordArtifacts || error(
-        "Bundle extras do not contain SubwordArtifacts. This helper only works for subword-native bundles.")
+        "Bundle extras do not contain SubwordArtifacts. This helper only works for bundles produced by subword = SubwordOptions(...).")
     return extras
 end
 
@@ -285,6 +285,9 @@ get_subword_offsets(bundle::PreprocessBundle) =
 
 get_subword_attention_mask(bundle::PreprocessBundle) =
     _require_subword_artifacts(bundle).attention_masks
+
+get_subword_token_type_ids(bundle::PreprocessBundle) =
+    _require_subword_artifacts(bundle).token_type_ids
 
 get_subword_special_tokens_mask(bundle::PreprocessBundle) =
     _require_subword_artifacts(bundle).special_tokens_masks
@@ -313,5 +316,6 @@ import ._Subwords:
     preprocess_subword_corpus,
     get_subword_offsets,
     get_subword_attention_mask,
+    get_subword_token_type_ids,
     get_subword_special_tokens_mask,
     get_subword_metadata
