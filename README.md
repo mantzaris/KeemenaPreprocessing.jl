@@ -124,6 +124,18 @@ Subword modes:
 
 Both modes store subword-only artifacts (offsets/masks/token-type-ids/metadata) in `bundle.extras`.
 
+Subword configs also work in streaming entrypoints:
+
+```julia
+streaming_bundle = preprocess_corpus_streaming_full(
+    ["Large document 1...", "Large document 2..."];
+    cfg = cfg,
+    chunk_tokens = 50_000,
+)
+
+streaming_subword_ids = get_token_ids(streaming_bundle, :subword)
+```
+
 Level naming depends on integration path:
 
 * First-party subword path (`subword = SubwordOptions(...)`) defaults to level `:subword`.

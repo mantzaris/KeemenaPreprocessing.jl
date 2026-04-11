@@ -576,15 +576,122 @@
         @test smask[1] == expected.special_tokens_mask
     end
 
-    @testset "streaming guard for subword config" begin
+    @testset "streaming tokenizer-native subword parity" begin
         fixture = _hf_wordpiece_fixture_path()
+        docs = [
+            "Streaming subword support should work end to end for larger corpora and realistic text.",
+            "This second sentence-heavy document verifies merged offsets, masks, and metadata parity.",
+            "Third document keeps tokenizer-native ids stable while chunked processing stays memory bounded.",
+        ]
         cfg = KeemenaPreprocessing.PreprocessConfiguration(
+            cleaning_profile = :subword_cooperative,
             subword = KeemenaPreprocessing.SubwordOptions(
                 source = fixture,
                 format = :hf_tokenizer_json,
+                mode = :tokenizer_native,
+                level_name = :subword,
+                add_special_tokens = true,
+                apply_tokenization_view = true,
+                return_offsets = true,
+                return_masks = true,
             ),
         )
-        @test_throws ErrorException KeemenaPreprocessing.preprocess_corpus_streaming(
-            ["hello world"]; cfg = cfg, chunk_tokens = 100)
+
+        baseline = KeemenaPreprocessing.preprocess_corpus(docs; config = cfg)
+        chunk_tokens = 12
+
+        chunks = KeemenaPreprocessing.preprocess_corpus_streaming_chunks(
+            docs; cfg = cfg, chunk_tokens = chunk_tokens)
+        @test length(chunks) > 1
+        vocab_ref = chunks[1].levels[:subword].vocabulary
+        @test all(b -> b.levels[:subword].vocabulary === vocab_ref, chunks)
+
+        merged = KeemenaPreprocessing.preprocess_corpus_streaming_full(
+            docs; cfg = cfg, chunk_tokens = chunk_tokens)
+
+        @test KeemenaPreprocessing.get_token_ids(merged, :subword) ==
+              KeemenaPreprocessing.get_token_ids(baseline, :subword)
+        @test merged.levels[:subword].corpus.document_offsets ==
+              baseline.levels[:subword].corpus.document_offsets
+        @test KeemenaPreprocessing.get_subword_offsets(merged) ==
+              KeemenaPreprocessing.get_subword_offsets(baseline)
+        @test KeemenaPreprocessing.get_subword_attention_mask(merged) ==
+              KeemenaPreprocessing.get_subword_attention_mask(baseline)
+        @test KeemenaPreprocessing.get_subword_token_type_ids(merged) ==
+              KeemenaPreprocessing.get_subword_token_type_ids(baseline)
+        @test KeemenaPreprocessing.get_subword_special_tokens_mask(merged) ==
+              KeemenaPreprocessing.get_subword_special_tokens_mask(baseline)
+        @test KeemenaPreprocessing.get_subword_metadata(merged).tokenization_texts ==
+              KeemenaPreprocessing.get_subword_metadata(baseline).tokenization_texts
+        @test length(KeemenaPreprocessing.get_subword_metadata(merged).per_document) == length(docs)
+
+        total_chunk_tokens = sum(length(KeemenaPreprocessing.get_token_ids(b, :subword)) for b in chunks)
+        @test total_chunk_tokens == length(KeemenaPreprocessing.get_token_ids(merged, :subword))
+
+        prebuilt_vocab = baseline.levels[:subword].vocabulary
+        chunks_with_vocab = collect(KeemenaPreprocessing.preprocess_corpus_streaming(
+            docs; cfg = cfg, vocab = prebuilt_vocab, chunk_tokens = chunk_tokens))
+        @test all(b -> b.levels[:subword].vocabulary === prebuilt_vocab, chunks_with_vocab)
+    end
+
+    @testset "streaming bundle-reindexed subword parity" begin
+        fixture = _hf_wordpiece_fixture_path()
+        docs = [
+            "common common rarealpha common coreterms and shared tokens",
+            "common rarebeta shared terms common and common again",
+            "coreterms shared tokens appear here while raregamma appears once",
+        ]
+
+        cfg = KeemenaPreprocessing.PreprocessConfiguration(
+            minimum_token_frequency = 2,
+            special_tokens = Dict(:unk => "<UNK>", :pad => "<PAD>"),
+            subword = KeemenaPreprocessing.SubwordOptions(
+                source = fixture,
+                format = :hf_tokenizer_json,
+                mode = :bundle_reindexed,
+                level_name = :subword,
+                add_special_tokens = false,
+                apply_tokenization_view = true,
+                return_offsets = true,
+                return_masks = true,
+            ),
+        )
+
+        baseline = KeemenaPreprocessing.preprocess_corpus(docs; config = cfg)
+        chunk_tokens = 10
+
+        chunks = KeemenaPreprocessing.preprocess_corpus_streaming_chunks(
+            docs; cfg = cfg, chunk_tokens = chunk_tokens)
+        @test length(chunks) > 1
+        vocab_ref = chunks[1].levels[:subword].vocabulary
+        @test all(b -> b.levels[:subword].vocabulary === vocab_ref, chunks)
+
+        merged = KeemenaPreprocessing.preprocess_corpus_streaming_full(
+            docs; cfg = cfg, chunk_tokens = chunk_tokens)
+
+        @test KeemenaPreprocessing.get_token_ids(merged, :subword) ==
+              KeemenaPreprocessing.get_token_ids(baseline, :subword)
+        @test merged.levels[:subword].corpus.document_offsets ==
+              baseline.levels[:subword].corpus.document_offsets
+        @test merged.levels[:subword].vocabulary.id_to_token_strings ==
+              baseline.levels[:subword].vocabulary.id_to_token_strings
+        @test merged.levels[:subword].vocabulary.special_tokens ==
+              baseline.levels[:subword].vocabulary.special_tokens
+        @test KeemenaPreprocessing.get_subword_offsets(merged) ==
+              KeemenaPreprocessing.get_subword_offsets(baseline)
+        @test KeemenaPreprocessing.get_subword_attention_mask(merged) ==
+              KeemenaPreprocessing.get_subword_attention_mask(baseline)
+        @test KeemenaPreprocessing.get_subword_token_type_ids(merged) ==
+              KeemenaPreprocessing.get_subword_token_type_ids(baseline)
+        @test KeemenaPreprocessing.get_subword_special_tokens_mask(merged) ==
+              KeemenaPreprocessing.get_subword_special_tokens_mask(baseline)
+        @test KeemenaPreprocessing.get_subword_metadata(merged).mode == :bundle_reindexed
+
+        prebuilt_vocab = baseline.levels[:subword].vocabulary
+        merged_with_vocab = KeemenaPreprocessing.preprocess_corpus_streaming_full(
+            docs; cfg = cfg, vocab = prebuilt_vocab, chunk_tokens = chunk_tokens)
+        @test merged_with_vocab.levels[:subword].vocabulary === prebuilt_vocab
+        @test KeemenaPreprocessing.get_token_ids(merged_with_vocab, :subword) ==
+              KeemenaPreprocessing.get_token_ids(baseline, :subword)
     end
 end

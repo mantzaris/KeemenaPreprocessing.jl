@@ -152,7 +152,7 @@ Additional notes:
 * Compatibility aliases are accepted (`:native`, `:corpus`, `:tokenizer`, `:bundle`).
 * Cleaning profile aliases are accepted (`:subword_safe`, `:cooperative`).
 * If `cleaning_profile = :subword_cooperative` is set without `subword`, configuration falls back to `:classic` with a warning.
-* When `subword !== nothing`, use `preprocess_corpus` (streaming is not yet supported).
+* `subword !== nothing` works with `preprocess_corpus`, `preprocess_corpus_streaming`, `preprocess_corpus_streaming_chunks`, and `preprocess_corpus_streaming_full`.
 * Use subword helpers (`get_subword_offsets`, `get_subword_attention_mask`, `get_subword_token_type_ids`, `get_subword_special_tokens_mask`, `get_subword_metadata`) rather than reading `extras` directly.
 * See [Subwords via KeemenaPreprocessing](@ref guide_subwords) for full end-to-end walkthroughs and decision guidance.
 

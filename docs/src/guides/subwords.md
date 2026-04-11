@@ -154,6 +154,44 @@ cfg = PreprocessConfiguration(
 
 ---
 
+## Subwords with streaming (large corpora)
+
+If you like the one-package subword API but your corpus is large, you can use
+the streaming entrypoints with the same `cfg`.
+
+```julia
+using KeemenaPreprocessing
+
+cfg = PreprocessConfiguration(
+    cleaning_profile = :subword_cooperative,
+    subword = SubwordOptions(
+        source = :core_bpe_en,
+        mode = :tokenizer_native,  # or :bundle_reindexed
+        level_name = :subword,
+    ),
+)
+
+# 1) Channel API
+ch = preprocess_corpus_streaming("data/*"; cfg = cfg, chunk_tokens = 250_000)
+
+# 2) Materialized chunk vector
+chunks = preprocess_corpus_streaming_chunks("data/*"; cfg = cfg, chunk_tokens = 250_000)
+
+# 3) Single merged bundle
+merged = preprocess_corpus_streaming_full("data/*"; cfg = cfg, chunk_tokens = 250_000)
+ids = get_token_ids(merged, :subword)
+```
+
+Practical guidance:
+
+- Use `:tokenizer_native` when downstream code expects tokenizer-native ids.
+- Use `:bundle_reindexed` when you want corpus-owned ids/vocabulary with
+  `minimum_token_frequency` and your special-token policy.
+- All subword artifact helpers (`get_subword_offsets`, masks, metadata) work for
+  streaming bundles as well.
+
+---
+
 ## Integrated workflow with explicit tokenizer control
 
 Use this when you want KeemenaPreprocessing bundles, but you also want to
@@ -295,10 +333,3 @@ bundle = preprocess_corpus(["hello world"]; config = cfg)
 ```
 
 In this legacy callable path, the primary token stream remains under `:word`.
-
----
-
-## Current constraints
-
-- Streaming entrypoints do not yet support `subword = SubwordOptions(...)`.
-  Use `preprocess_corpus` for now.

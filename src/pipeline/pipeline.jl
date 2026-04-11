@@ -191,6 +191,22 @@ preprocess_corpus_streaming_chunks(srcs; kwargs...) =
 collect(preprocess_corpus_streaming(srcs; kwargs...))
 
 
+function _streaming_primary_level(cfg::PreprocessConfiguration)::Symbol
+    if cfg.subword !== nothing
+        return cfg.subword.level_name
+    end
+
+    tk = cfg.tokenizer_name
+    return tk === :byte       ? :byte :
+           tk === :char       ? :character :
+           tk === :unicode    ? :word :
+           tk === :whitespace ? :word :
+           tk isa Function    ? :word :
+           tk isa Symbol      ? tk :
+           :word
+end
+
+
 """
 preprocess_corpus_streaming_full(srcs; kwargs...) -> PreprocessBundle
 
@@ -218,7 +234,12 @@ function preprocess_corpus_streaming_full(srcs; kwargs...)
     end
 
     base_cfg   = first_chunk.metadata.configuration
-    base_vocab = first_chunk.levels[:word].vocabulary      # assumes :word exists
+    primary_level = _streaming_primary_level(base_cfg)
+    haskey(first_chunk.levels, primary_level) || error(
+        "Streaming chunk is missing expected primary level :$primary_level")
+    base_vocab = first_chunk.levels[primary_level].vocabulary
+    level_vocab_map = Dict{Symbol,Vocabulary}(lvl => lb.vocabulary for (lvl, lb) in first_chunk.levels)
+    extras_accum = deepcopy(first_chunk.extras)
 
     # 1 accumulators (deep-copy so we don't mutate first_chunk)
     accum = Dict{Symbol,Corpus}(lvl => deepcopy(lb.corpus) for (lvl,lb) in first_chunk.levels)
@@ -226,9 +247,23 @@ function preprocess_corpus_streaming_full(srcs; kwargs...)
     # 2 merge every subsequent chunk
     for bund in ch 
         bund.metadata.configuration != base_cfg   && error("Config mismatch")
-        bund.levels[:word].vocabulary !== base_vocab && error("Vocab mismatch")
+        haskey(bund.levels, primary_level) || error(
+            "Streaming chunk is missing expected primary level :$primary_level")
+        bund.levels[primary_level].vocabulary !== base_vocab && error("Vocab mismatch")
+
+        if base_cfg.subword !== nothing
+            extras_accum isa SubwordArtifacts || error(
+                "Expected SubwordArtifacts in merged streaming extras")
+            bund.extras isa SubwordArtifacts || error(
+                "Expected SubwordArtifacts in incoming streaming extras")
+            merge_subword_artifacts!(extras_accum, bund.extras)
+        end
 
         for (lvl, lb) in bund.levels
+            haskey(accum, lvl) || error("Level mismatch in streaming merge: missing level :$lvl")
+            haskey(level_vocab_map, lvl) || error("Missing reference vocabulary for level :$lvl")
+            lb.vocabulary === level_vocab_map[lvl] || error("Vocabulary mismatch for level :$lvl")
+
             acc_corp = accum[lvl]
             new_corp = lb.corpus
 
@@ -268,7 +303,10 @@ function preprocess_corpus_streaming_full(srcs; kwargs...)
                 # push fresh sentinel only if this level uses them
                 uses_sentinel = (!isempty(dest_vec) && dest_vec[1] == 0) || src_tail
                 if uses_sentinel
-                    push!(dest_vec, length(acc_corp.token_ids))   # new ntok
+                    sentinel_tail = !isempty(dest_vec) && dest_vec[1] == 1 ?
+                                    length(acc_corp.token_ids) + 1 :
+                                    length(acc_corp.token_ids)
+                    push!(dest_vec, sentinel_tail)
                 end
             end
 
@@ -277,13 +315,14 @@ function preprocess_corpus_streaming_full(srcs; kwargs...)
     end  
 
     # 3 - wrap into LevelBundles
-    merged_levels = Dict{Symbol,LevelBundle}(lvl => LevelBundle(corp, base_vocab)
+    merged_levels = Dict{Symbol,LevelBundle}(lvl => LevelBundle(corp, level_vocab_map[lvl])
                                              for (lvl, corp) in accum)
 
     merged = PreprocessBundle(merged_levels;
                               metadata   = first_chunk.metadata,
+                              extras     = extras_accum,
                               alignments = Dict{Tuple{Symbol,Symbol},CrossMap}())
-    build_ensure_alignments!(merged)
+    haskey(merged.levels, :word) && build_ensure_alignments!(merged)
     return merged
 end
 
@@ -305,6 +344,10 @@ Low-memory, **two-pass** variant of `preprocess_corpus` that yields a
 Each bundle covers *≈ `chunk_tokens`* worth of tokens, letting you pipeline
 huge corpora through training code without ever loading the whole dataset into
 RAM.
+
+When `cfg.subword !== nothing`, this entrypoint uses the first-party subword
+integration as well (same `SubwordOptions` API as `preprocess_corpus`).
+The same channel/chunks/full helpers are available in subword mode.
 
 ### Workflow
 1. **Vocabulary pass** (optional)  
@@ -360,7 +403,8 @@ function preprocess_corpus_streaming(srcs;
                                      chunk_tokens::Int = DEFAULT_CHUNK_TOKENS)
 
     cfg.subword !== nothing &&
-        error("preprocess_corpus_streaming does not yet support subword=SubwordOptions(...); use preprocess_corpus for now.")
+        return preprocess_subword_streaming(srcs;
+            cfg = cfg, vocab = vocab, chunk_tokens = chunk_tokens)
 
     if vocab === nothing
         freqs = _streaming_counts(srcs, cfg; chunk_tokens = chunk_tokens)  # constant-memory pass

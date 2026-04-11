@@ -19,6 +19,10 @@ how you consume the results:
 | `preprocess_corpus_streaming_chunks` | `Vector{PreprocessBundle}` | You prefer materialised chunks (e.g. GPU sharding). |
 | `preprocess_corpus_streaming_full` | `PreprocessBundle` | You need one big bundle but can't load the raw corpus at once. |
 
+These helpers also support first-party subword configs via
+`subword = SubwordOptions(...)`. In subword mode, the primary level is usually
+`:subword` instead of `:word`.
+
 ---
 
 ## 1 - Stream through a `Channel` (more manual)
@@ -64,6 +68,9 @@ bundle = preprocess_corpus_streaming_full(["en.txt", "de.txt"];
 
 @info "corpus length: (length(get_token_ids(bundle, :word)))"
 ```
+
+If `cfg.subword !== nothing`, query `:subword` instead:
+`length(get_token_ids(bundle, :subword))`.
 
 * Merges each chunk into an accumulator in constant memory.  
 * Verifies all chunks share the same `Vocabulary` and `cfg`.  
