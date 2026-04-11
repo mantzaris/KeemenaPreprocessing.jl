@@ -506,6 +506,21 @@ function validate_offsets(corpus::Corpus, level_name::Symbol)
     # 1-token-per-offset invariants
     level_name === :document && return
 
+    if level_name === :subword
+        offsets = corpus.document_offsets
+        n_tokens = length(corpus.token_ids)
+        expected_tail = n_tokens + 1
+
+        isempty(offsets) && error("Subword corpus must contain at least one document offset sentinel")
+        offsets[1] == 1 || error("Subword document offsets must start at 1")
+        offsets[end] == expected_tail || error(
+            "Subword document offsets must end at n_tokens + 1 = $expected_tail")
+        issorted(offsets) || error("Subword document offsets must be nondecreasing")
+        all(1 <= o <= expected_tail for o in offsets) || error(
+            "Subword document offsets must stay within [1, n_tokens + 1]")
+        return true
+    end
+
     field = get(LEVEL_TO_OFFSETS_FIELD, level_name, nothing)
     field === nothing && return                    # level has no dedicated offsets field
 
@@ -794,4 +809,3 @@ function Base.show(io::IO, ::MIME"text/plain", bundle::PreprocessBundle)
         println(io, "    Documents: ", length(lb.corpus.document_offsets) - 1)
     end
 end
-

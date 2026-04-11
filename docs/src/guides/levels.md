@@ -31,6 +31,7 @@ end
 | `:byte`      | one UTF-8 byte  | `byte_offsets`      |
 | `:character` | Unicode scalar value | `character_offsets` |
 | `:word`      | whitespace/unicode-split word | `word_offsets` |
+| `:subword`   | tokenizer-native subword id stream | no dedicated field; use `document_offsets` + subword extras accessors |
 | `:sentence`  | heuristic sentence span | `sentence_offsets` |
 | `:paragraph` | blank-line span | `paragraph_offsets` |
 | `:document`  | whole source file | `document_offsets` |
@@ -51,7 +52,7 @@ spans = getfield(corpus, field)
 
 | Pipeline call | Levels you always get |
 |---------------|-----------------------|
-| `preprocess_corpus` | `:byte`, `:character`, `:word` (+ optional sentence/paragraph) |
+| `preprocess_corpus` | generic mode: `:byte`, `:character`, `:word` (+ optional sentence/paragraph); subword mode: `:subword` |
 | `preprocess_corpus_streaming*` | same per chunk; merge helper rebuilds alignments |
 
 ### Helper functions

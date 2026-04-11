@@ -42,6 +42,33 @@ end
     @test_throws ErrorException KeemenaPreprocessing.validate_offsets(corp_bad, :word)
 end
 
+@testset "validate_offsets (:subword)" begin
+    # valid subword corpus: nondecreasing document offsets, sentinel tail n_tokens + 1
+    good = KeemenaPreprocessing.Corpus(
+        [1, 2],        # token ids
+        [1, 1, 3],     # empty first doc then one non-empty doc
+        nothing, nothing, nothing, nothing, nothing)
+    @test KeemenaPreprocessing.validate_offsets(good, :subword) == true
+
+    bad_start = KeemenaPreprocessing.Corpus(
+        [1, 2],
+        [2, 3],        # must start at 1
+        nothing, nothing, nothing, nothing, nothing)
+    @test_throws ErrorException KeemenaPreprocessing.validate_offsets(bad_start, :subword)
+
+    bad_tail = KeemenaPreprocessing.Corpus(
+        [1, 2],
+        [1, 2],        # must end at n_tokens + 1 = 3
+        nothing, nothing, nothing, nothing, nothing)
+    @test_throws ErrorException KeemenaPreprocessing.validate_offsets(bad_tail, :subword)
+
+    bad_order = KeemenaPreprocessing.Corpus(
+        [1, 2],
+        [1, 3, 2],     # must be nondecreasing
+        nothing, nothing, nothing, nothing, nothing)
+    @test_throws ErrorException KeemenaPreprocessing.validate_offsets(bad_order, :subword)
+end
+
 # crossMap constructor and basics
 
 @testset "CrossMap" begin
@@ -79,4 +106,3 @@ end
     @test new.extras != bun.extras
     @test new.levels == bun.levels         # unchanged copy
 end
-

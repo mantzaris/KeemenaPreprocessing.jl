@@ -56,6 +56,34 @@ bund = preprocess_corpus(docs;
                          minimum_token_frequency = 2)
 ```
 
+---
+
+## Subwords (integrated path)
+
+```julia
+using KeemenaPreprocessing
+
+docs = [
+    "Subword tokenization handles rare compounds robustly.",
+    "This pipeline keeps tokenizer-native ids and masks.",
+]
+
+cfg = PreprocessConfiguration(
+    subword = SubwordOptions(
+        source = :core_bpe_en,
+        mode = :native,
+        level_name = :subword,
+    ),
+)
+
+bund = preprocess_corpus(docs; config = cfg)
+
+subword_ids = get_token_ids(bund, :subword)
+offsets = get_subword_offsets(bund)
+```
+
+For details and advanced usage, see [Subwords via KeemenaPreprocessing](@ref guide_subwords).
+
 
 ---
 

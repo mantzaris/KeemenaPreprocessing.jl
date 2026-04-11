@@ -93,6 +93,30 @@ record offsets, assemble bundle.
 
 ---
 
+## Subwords via KeemenaPreprocessing (Phase 1)
+
+```julia
+using KeemenaPreprocessing
+
+cfg = PreprocessConfiguration(
+    subword = SubwordOptions(
+        source = :core_bpe_en,   # built-in KeemenaSubwords model key
+        mode = :native,
+        level_name = :subword,
+    ),
+)
+
+bundle = preprocess_corpus(["Hello world"]; config = cfg)
+
+subword_ids = get_token_ids(bundle, :subword)
+offsets = get_subword_offsets(bundle)
+```
+
+This path preserves tokenizer-native ids and stores subword-only artifacts
+(offsets/masks/metadata) in `bundle.extras`.
+
+---
+
 
 ## Processing *huge* corpora with constant memory
 
@@ -124,6 +148,8 @@ yet you still need strict memory bounds during preprocessing.
 ---
 
 # Installing
+
+Requires Julia `1.10` or newer.
 
 It can be downloaded from the general registry: `import Pkg; Pkg.add("KeemenaPreprocessing")`, or pressing ']' and then typing `add KeemenaPreprocessing` and then back in the REPL prompt `using KeemenaPreprocessing`.
 

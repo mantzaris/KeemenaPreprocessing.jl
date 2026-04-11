@@ -14,6 +14,7 @@ _default_cfg() = KeemenaPreprocessing.PreprocessConfiguration()
 
     @test cfg.tokenizer_name == :whitespace
     @test !cfg.preserve_empty_tokens
+    @test cfg.subword === nothing
 
     @test cfg.minimum_token_frequency == 1
     @test cfg.special_tokens[:unk] == "<UNK>"
@@ -49,4 +50,11 @@ end
 
     # tokenizer_name must be valid Symbol or Function
     @test_throws AssertionError KeemenaPreprocessing.PreprocessConfiguration(tokenizer_name = :invalid_tok)
+
+    # subword must be either nothing or SubwordOptions
+    @test_throws ErrorException KeemenaPreprocessing.PreprocessConfiguration(subword = :invalid)
+
+    # only native mode is supported in phase 1
+    @test_throws ErrorException KeemenaPreprocessing.SubwordOptions(
+        source = :core_bpe_en, mode = :corpus)
 end

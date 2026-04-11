@@ -81,6 +81,30 @@ Arguments are grouped by stage; omit any keyword to keep its default.
 |---------|---------|-------------|
 | `tokenizer_name` | `:whitespace` | One of [`TOKENIZERS`](@ref built_in_tokenizers) **or** a custom `f(::String)` callable. |
 | `preserve_empty_tokens` | `false` | Keep zero-length tokens if the tokenizer returns them. |
+| `subword` | `nothing` | Activate first-party subword integration with `SubwordOptions(...)` (Phase 1 supports `mode = :native`). |
+
+### First-party subwords
+
+Use `subword = SubwordOptions(...)` when you want tokenizer-native ids from
+KeemenaSubwords stored directly in the bundle.
+
+```julia
+cfg = PreprocessConfiguration(
+    subword = SubwordOptions(
+        source = :core_bpe_en,
+        mode = :native,
+        level_name = :subword,
+    ),
+)
+```
+
+Notes:
+
+* `mode = :native` is currently the supported mode.
+* When `subword !== nothing`, call `preprocess_corpus` (streaming is not yet supported).
+* Use the subword artifact helpers (`get_subword_offsets`, `get_subword_attention_mask`, etc.)
+  to read masks/offsets from bundle extras.
+* See [Subwords via KeemenaPreprocessing](@ref guide_subwords) for end-to-end examples.
 
 ### Vocabulary construction
 
@@ -216,4 +240,3 @@ Invalid combinations raise `AssertionError`, so mistakes fail fast during config
 ### Return value
 
 `PreprocessConfiguration(… )` always yields a **fully-populated, immutable struct** ready to be stored in bundle metadata or reused across jobs.
-

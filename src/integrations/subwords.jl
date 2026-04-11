@@ -1,0 +1,202 @@
+module _Subwords
+
+using ..KeemenaPreprocessing:
+    PreprocessConfiguration, SubwordOptions,
+    Vocabulary, Corpus, LevelBundle,
+    PipelineMetadata, PreprocessBundle
+
+import KeemenaSubwords
+
+
+"""
+Artifacts produced by `subword = SubwordOptions(...)` native-mode preprocessing.
+"""
+struct SubwordArtifacts
+    tokenization_texts::Vector{String}
+    offsets::Union{Nothing,Vector{Union{Nothing,Vector{Tuple{Int,Int}}}}}
+    attention_masks::Union{Nothing,Vector{Union{Nothing,Vector{Int}}}}
+    token_type_ids::Union{Nothing,Vector{Union{Nothing,Vector{Int}}}}
+    special_tokens_masks::Union{Nothing,Vector{Union{Nothing,Vector{Int}}}}
+    per_document_metadata::Vector{NamedTuple}
+    tokenizer_metadata::NamedTuple
+    source_description::String
+    format::Symbol
+    mode::Symbol
+    level_name::Symbol
+end
+
+
+_describe_source(source) =
+    source isa Symbol         ? ":$(source)" :
+    source isa AbstractString ? String(source) :
+    source isa NamedTuple     ? "NamedTuple($(join(keys(source), ", ")))" :
+    source isa KeemenaSubwords.FilesSpec ? "FilesSpec(format=$(source.format))" :
+    string(typeof(source))
+
+_parent_function(name::Symbol) = getfield(parentmodule(@__MODULE__), name)
+
+
+function _resolve_subword_tokenizer(opts::SubwordOptions)
+    src = opts.source
+
+    if src isa KeemenaSubwords.AbstractSubwordTokenizer
+        return src
+    elseif src isa Symbol
+        return KeemenaSubwords.load_tokenizer(src)
+    elseif src isa AbstractString
+        return KeemenaSubwords.load_tokenizer(String(src); format = opts.format)
+    elseif src isa NamedTuple
+        return KeemenaSubwords.load_tokenizer(src)
+    elseif src isa KeemenaSubwords.FilesSpec
+        return KeemenaSubwords.load_tokenizer(src)
+    end
+
+    throw(ArgumentError(
+        "Unsupported SubwordOptions source type $(typeof(src)); expected " *
+        "Symbol, AbstractString, NamedTuple, FilesSpec, or AbstractSubwordTokenizer"))
+end
+
+
+function _native_vocabulary(tokenizer)
+    vocab_size = KeemenaSubwords.vocab_size(tokenizer)
+    id_to_token_strings = [KeemenaSubwords.id_to_token(tokenizer, i) for i in 1:vocab_size]
+    token_to_id_map = Dict(tok => i for (i, tok) in pairs(id_to_token_strings))
+    token_frequencies = zeros(Int, vocab_size)
+
+    specials = Dict{Symbol,Int}()
+    for (sym, id) in KeemenaSubwords.special_tokens(tokenizer)
+        id isa Integer || continue
+        1 <= id <= vocab_size || continue
+        specials[sym] = Int(id)
+    end
+
+    return Vocabulary(id_to_token_strings, token_to_id_map, token_frequencies, specials)
+end
+
+
+function preprocess_subword_native(sources, cfg::PreprocessConfiguration)::PreprocessBundle
+    opts = cfg.subword
+    opts === nothing && error("preprocess_subword_native requires cfg.subword to be set")
+    opts.mode == :native || error("Only mode=:native is supported in this phase")
+
+    docs = _parent_function(:_load_sources)(sources)
+    clean_docs = _parent_function(:clean_documents)(docs, cfg)
+    tokenizer = _resolve_subword_tokenizer(opts)
+
+    token_ids = Int[]
+    doc_offsets = Int[1]
+
+    tokenization_texts = String[]
+    offsets = opts.return_offsets ? Union{Nothing,Vector{Tuple{Int,Int}}}[] : nothing
+    attention_masks = opts.return_masks ? Union{Nothing,Vector{Int}}[] : nothing
+    token_type_ids = opts.return_masks ? Union{Nothing,Vector{Int}}[] : nothing
+    special_tokens_masks = opts.return_masks ? Union{Nothing,Vector{Int}}[] : nothing
+    per_document_metadata = NamedTuple[]
+
+    for doc in clean_docs
+        clean_text = String(doc)
+        tokenization_text = KeemenaSubwords.tokenization_view(tokenizer, clean_text)
+
+        result = if opts.apply_tokenization_view
+            KeemenaSubwords.encode_result(
+                tokenizer, tokenization_text;
+                add_special_tokens = opts.add_special_tokens,
+                assume_normalized = true,
+                return_offsets = opts.return_offsets,
+                return_masks = opts.return_masks)
+        else
+            KeemenaSubwords.encode_result(
+                tokenizer, clean_text;
+                add_special_tokens = opts.add_special_tokens,
+                assume_normalized = false,
+                return_offsets = opts.return_offsets,
+                return_masks = opts.return_masks)
+        end
+
+        append!(token_ids, result.ids)
+        push!(doc_offsets, length(token_ids) + 1)
+        # Always store tokenizer-view text so offset reference remains explicit/stable.
+        push!(tokenization_texts, tokenization_text)
+        push!(per_document_metadata, result.metadata)
+
+        offsets !== nothing && push!(offsets, result.offsets)
+        attention_masks !== nothing && push!(attention_masks, result.attention_mask)
+        token_type_ids !== nothing && push!(token_type_ids, result.token_type_ids)
+        special_tokens_masks !== nothing && push!(special_tokens_masks, result.special_tokens_mask)
+    end
+
+    vocab = _native_vocabulary(tokenizer)
+    n_vocab = length(vocab.id_to_token_strings)
+    for id in token_ids
+        1 <= id <= n_vocab || error(
+            "Tokenizer produced id $id outside vocabulary size $n_vocab for level :$(opts.level_name)")
+        vocab.token_frequencies[id] += 1
+    end
+
+    corpus = Corpus(token_ids, doc_offsets, nothing, nothing, nothing, nothing, nothing)
+    level_bundle = LevelBundle(corpus, vocab)
+    levels = Dict(opts.level_name => level_bundle)
+
+    extras = SubwordArtifacts(
+        tokenization_texts,
+        offsets,
+        attention_masks,
+        token_type_ids,
+        special_tokens_masks,
+        per_document_metadata,
+        KeemenaSubwords.model_info(tokenizer),
+        _describe_source(opts.source),
+        opts.format,
+        opts.mode,
+        opts.level_name,
+    )
+
+    return PreprocessBundle(
+        levels;
+        metadata = PipelineMetadata(cfg, v"1.0.0"),
+        extras = extras,
+    )
+end
+
+
+function _require_subword_artifacts(bundle::PreprocessBundle)::SubwordArtifacts
+    extras = bundle.extras
+    extras isa SubwordArtifacts || error(
+        "Bundle extras do not contain SubwordArtifacts. This helper only works for subword-native bundles.")
+    return extras
+end
+
+
+get_subword_offsets(bundle::PreprocessBundle) =
+    _require_subword_artifacts(bundle).offsets
+
+get_subword_attention_mask(bundle::PreprocessBundle) =
+    _require_subword_artifacts(bundle).attention_masks
+
+get_subword_special_tokens_mask(bundle::PreprocessBundle) =
+    _require_subword_artifacts(bundle).special_tokens_masks
+
+function get_subword_metadata(bundle::PreprocessBundle)
+    extras = _require_subword_artifacts(bundle)
+    return (
+        source = extras.source_description,
+        format = extras.format,
+        mode = extras.mode,
+        level_name = extras.level_name,
+        tokenizer = extras.tokenizer_metadata,
+        per_document = extras.per_document_metadata,
+        tokenization_texts = extras.tokenization_texts,
+    )
+end
+
+
+end # module _Subwords
+
+
+import ._Subwords:
+    SubwordArtifacts,
+    preprocess_subword_native,
+    get_subword_offsets,
+    get_subword_attention_mask,
+    get_subword_special_tokens_mask,
+    get_subword_metadata

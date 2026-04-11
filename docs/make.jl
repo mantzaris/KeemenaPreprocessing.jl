@@ -27,6 +27,7 @@ makedocs(
             "Quick Start"        => "guides/quickstart.md",
             "Configuration"      => "guides/configuration.md",
             "Using Existing Tokenizers" => "guides/tokenizers.md",
+            "Subwords"           => "guides/subwords.md",
             "Core Types Introduction" => "guides/types.md",
             "Streaming Pipeline" => "guides/streaming.md",
             "Alignment"          => "guides/alignment.md",
@@ -40,4 +41,3 @@ makedocs(
 
 deploydocs(repo      = "github.com/mantzaris/KeemenaPreprocessing.jl",
            devbranch = "main")
-

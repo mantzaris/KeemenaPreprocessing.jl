@@ -22,5 +22,5 @@ include("test_raw_readers.jl")
 include("test_pipeline.jl")
 include("test_pipeline_streaming.jl")
 include("test_preprocessor_state.jl")
-
+include("test_subwords_integration.jl")
 

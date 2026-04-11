@@ -75,7 +75,10 @@ function preprocess_corpus(sources;
     end
     
     cfg = config === nothing ? PreprocessConfiguration(; kwargs...) : config
-    
+
+    if cfg.subword !== nothing
+        return _preprocess_subword_core(sources, cfg; save_to)
+    end
     return _preprocess_core(sources, cfg; save_to)
 end
 
@@ -125,6 +128,7 @@ note: If you do **not** have a configuration object yet, call the keyword-only v
 function preprocess_corpus(sources, cfg::PreprocessConfiguration;
                             save_to::Union{Nothing,String} = nothing)
 
+    cfg.subword !== nothing && return _preprocess_subword_core(sources, cfg; save_to)
     return _preprocess_core(sources, cfg; save_to)
 end
 
@@ -145,6 +149,15 @@ function _preprocess_core(sources,
     bundle        = assemble_bundle(tokens, offs, vocab, cfg)
     build_ensure_alignments!(bundle) #build_alignments!(bundle)
 
+    save_to !== nothing && save_preprocess_bundle(bundle, save_to)
+    return bundle
+end
+
+
+function _preprocess_subword_core(sources,
+                                  cfg::PreprocessConfiguration;
+                                  save_to::Union{Nothing,String}=nothing)
+    bundle = preprocess_subword_native(sources, cfg)
     save_to !== nothing && save_preprocess_bundle(bundle, save_to)
     return bundle
 end
@@ -345,7 +358,10 @@ function preprocess_corpus_streaming(srcs;
                                      cfg   ::PreprocessConfiguration = PreprocessConfiguration(),
                                      vocab ::Union{Nothing,Vocabulary} = nothing,
                                      chunk_tokens::Int = DEFAULT_CHUNK_TOKENS)
-    
+
+    cfg.subword !== nothing &&
+        error("preprocess_corpus_streaming does not yet support subword=SubwordOptions(...); use preprocess_corpus for now.")
+
     if vocab === nothing
         freqs = _streaming_counts(srcs, cfg; chunk_tokens = chunk_tokens)  # constant-memory pass
         vocab = build_vocabulary(freqs; cfg = cfg)

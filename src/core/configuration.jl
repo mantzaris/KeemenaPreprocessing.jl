@@ -1,6 +1,50 @@
 
 
 
+"""
+    SubwordOptions(; source,
+                     format = :auto,
+                     mode = :native,
+                     level_name = :subword,
+                     add_special_tokens = true,
+                     apply_tokenization_view = true,
+                     return_offsets = true,
+                     return_masks = true) -> SubwordOptions
+
+Configuration for first-party subword processing routed through
+`KeemenaSubwords`.
+
+Phase 1 supports `mode = :native`, preserving tokenizer-native ids.
+"""
+struct SubwordOptions
+    source                  :: Any
+    format                  :: Symbol
+    mode                    :: Symbol
+    level_name              :: Symbol
+    add_special_tokens      :: Bool
+    apply_tokenization_view :: Bool
+    return_offsets          :: Bool
+    return_masks            :: Bool
+end
+
+function SubwordOptions(;
+        source,
+        format::Symbol = :auto,
+        mode::Symbol = :native,
+        level_name::Symbol = :subword,
+        add_special_tokens::Bool = true,
+        apply_tokenization_view::Bool = true,
+        return_offsets::Bool = true,
+        return_masks::Bool = true)
+
+    source === nothing && error("SubwordOptions requires a non-nothing source")
+    mode == :native || error("SubwordOptions mode=:$(mode) is not supported yet; use :native")
+    return SubwordOptions(
+        source, format, mode, level_name, add_special_tokens,
+        apply_tokenization_view, return_offsets, return_masks)
+end
+
+
 struct PreprocessConfiguration
 
     # Cleaning
@@ -46,6 +90,7 @@ struct PreprocessConfiguration
     # Tokenisation
     tokenizer_name            :: Union{Symbol,Function}
     preserve_empty_tokens     :: Bool
+    subword                   :: Union{Nothing,SubwordOptions}
 
     # Vocabulary
     minimum_token_frequency   :: Int
@@ -141,6 +186,7 @@ are grouped below by the stage they affect.
 |---------|---------|---------|
 | `tokenizer_name` | `:whitespace` | One of `TOKENIZERS` **or** a callable. |
 | `preserve_empty_tokens` | `false` | Keep zero-length tokens. |
+| `subword` | `nothing` | Activate first-party subword flow via `SubwordOptions(...)` (Phase 1 supports `mode = :native`). |
 
 # Vocabulary construction
 | keyword | default | purpose |
@@ -207,6 +253,7 @@ function PreprocessConfiguration(;  # all kwargs are optional
 
         tokenizer_name            = :whitespace,
         preserve_empty_tokens     = false,
+        subword                   = nothing,
 
         minimum_token_frequency   = 1,
         special_tokens            = Dict(:unk => "<UNK>", :pad => "<PAD>"), #TODO: expand!!!
@@ -229,6 +276,8 @@ function PreprocessConfiguration(;  # all kwargs are optional
 
     @assert emoji_handling in (:keep, :remove, :sentinel) "emoji_handling must be :keep, :remove, or :sentinel"
     @assert unicode_normalisation_form in (:none, :NFC, :NFD, :NFKC, :NFKD)
+    subword !== nothing && !(subword isa SubwordOptions) &&
+        error("subword must be nothing or a SubwordOptions instance")
 
     specials_dict = copy(special_tokens)
 
@@ -254,11 +303,11 @@ function PreprocessConfiguration(;  # all kwargs are optional
         squeeze_repeat_chars, max_char_run, map_confusables,
         # Unicode & punctuation (29-30)
         unicode_normalisation_form, map_unicode_punctuation,
-        # Tokeniser (31-32)
-        tokenizer_name, preserve_empty_tokens,
-        # Vocabulary (33-34)
+        # Tokeniser (31-33)
+        tokenizer_name, preserve_empty_tokens, subword,
+        # Vocabulary (34-35)
         minimum_token_frequency, specials_dict,
-        # Off-set recording (35-40)
+        # Off-set recording (36-41)
         record_byte_offsets, record_character_offsets, record_word_offsets,
         record_sentence_offsets, record_paragraph_offsets, record_document_offsets
     )

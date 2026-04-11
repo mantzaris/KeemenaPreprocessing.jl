@@ -5,12 +5,14 @@ __precompile__()
 
 
 using Glob
+import KeemenaSubwords
 
 
 #core data types
 include(joinpath(@__DIR__, "core", "configuration.jl"))
 
 export PreprocessConfiguration, TOKENIZERS, byte_cfg
+export SubwordOptions
 
 
 include(joinpath(@__DIR__, "core", "types.jl"))
@@ -42,6 +44,15 @@ export assemble_bundle #assemble.jl
 
 @doc (@doc _Alignment.alignment_byte_to_word) alignment_byte_to_word
 export alignment_byte_to_word #alignment : alignment_char_to_word, alignment_byte_to_char, build_alignments! #alignment
+
+
+include(joinpath(@__DIR__, "integrations", "subwords.jl"))
+
+export SubwordArtifacts,
+       get_subword_offsets,
+       get_subword_attention_mask,
+       get_subword_special_tokens_mask,
+       get_subword_metadata
 
 
 include(joinpath(@__DIR__, "pipeline", "pipeline.jl"))

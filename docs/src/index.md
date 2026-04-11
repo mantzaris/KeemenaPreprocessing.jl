@@ -22,7 +22,7 @@ run incrementally in fixed-size chunks.
 | Stage | Purpose |
 |-------|---------|
 | **Cleaning** | Lower-cases, strips accents, removes control characters, collapses whitespace and can replace URLs, e-mails or numbers with sentinel tokens. |
-| **Tokenisation** | Built-in byte, Unicode-word, whitespace and character tokenisers plus a hook for your own function. |
+| **Tokenisation** | Built-in byte, Unicode-word, whitespace and character tokenisers, generic callables, and first-party subword integration via `SubwordOptions(...)`. |
 | **Segmentation** | Optional paragraph and sentence splitters driven by regex. |
 | **Vocabulary** | Frequency filtering, minimum counts, user-defined special tokens. |
 | **Streaming mode** | Process arbitrarily large corpora via channels so nothing ever has to fit entirely in RAM. |
@@ -62,6 +62,7 @@ bundle = preprocess_corpus("data/raw.txt"; config = cfg)
 ## Documentation map
 
 * **[Configuration](@ref config_top)** : every option in `PreprocessConfiguration`
+* **[Subwords](@ref guide_subwords)** : first-party native-id subword flow and artifact accessors
 * **Cleaning** : rules, sentinel tokens, customisation
 * **Tokenisation** : built-in tokenisers and extensibility
 * **Vocabulary** : frequency thresholds, specials, determinism

@@ -5,17 +5,18 @@ Instead, it is a preprocessing pipeline: you choose how to tokenize, and Keemena
 
 If you want a lightweight custom tokenizer function (no external dependencies), see [Quick Start: Supplying a custom tokenizer function](@ref quickstart_custom_tokenizer).
 
-This page shows how to use existing tokenizer packages (eg WordTokenizers.jl, BytePairEncoding.jl) without KeemenaPreprocessing taking hard dependencies on them. KeemenaPreprocessing also ships a small set of built-in tokenizers (`:whitespace`, `:unicode`, `:byte`, `:char`) for convenience with various configurations that should work in most instances.
+This page shows how to use existing tokenizer packages (eg WordTokenizers.jl, BytePairEncoding.jl) through the generic callable path. KeemenaPreprocessing also ships a small set of built-in tokenizers (`:whitespace`, `:unicode`, `:byte`, `:char`) for convenience with various configurations that should work in most instances.
 
-- :word is the canonical key for the primary string-token stream produced by tokenizer_name (whitespace tokens, BPE pieces, grapheme clusters, etc)
-- :character is the canonical key for the Unicode scalar-value stream (codepoints) when recorded
-- :byte is the canonical key for the UTF-8 byte stream when recorded.
+- `:word` is the canonical key for the primary string-token stream produced by `tokenizer_name` (whitespace tokens, callable-tokenizer pieces, grapheme clusters, etc).
+- `:character` is the canonical key for the Unicode scalar-value stream (codepoints) when recorded.
+- `:byte` is the canonical key for the UTF-8 byte stream when recorded.
+- First-party subword integration (`subword = SubwordOptions(...)`) defaults to level `:subword`; see [Subwords via KeemenaPreprocessing](@ref guide_subwords).
 
 ---
 
-## Why callables (avoid hard dependencies)
+## Why callables (generic integration)
 
-KeemenaPreprocessing accepts tokenizers as callables rather than integrating tightly with any single tokenization ecosystem:
+For generic tokenizer integrations, KeemenaPreprocessing accepts tokenizers as callables rather than integrating tightly with every tokenization ecosystem:
 
 - Reproducibility: the tokenizer behavior is pinned inside your `PreprocessConfiguration`, rather than being controlled by hidden global defaults.
 - Avoid global state surprises: some tokenizer packages expose globally configurable defaults (changing them can affect other code in the same Julia session)
@@ -44,9 +45,10 @@ tokens = tokenizer(text::AbstractString)
 
 KeemenaPreprocessing uses canonical level keys in the returned bundle:
 
-- `:word` is the canonical key for the primary string-token stream (this includes subword pieces such as BPE).
+- `:word` is the canonical key for the primary string-token stream from `tokenizer_name`.
 - `:character` is used for grapheme-level tokenization (`tokenizer_name = :char`).
 - `:byte` is used for raw UTF-8 bytes (`tokenizer_name = :byte`).
+- `:subword` is the default key for first-party subword mode (`subword = SubwordOptions(...)`).
 
 
 ```julia
@@ -186,7 +188,7 @@ subword_vocab = get_vocabulary(bundle, :word)
 println("First 30 vocab strings: ", subword_vocab.id_to_token_strings[1:min(end, 30)])
 ```
 
-Important: Keemena stores the primary string-token stream under `:word` even when the tokenizer returns subword pieces (BPE).
+Important: in the callable path, Keemena stores the primary string-token stream under `:word` even when the tokenizer returns subword pieces (BPE). The dedicated first-party subword path stores tokenizer-native ids under `:subword` by default.
 
 ### byte and character offsets with BPE
 
