@@ -100,6 +100,8 @@ end
             @test haskey(file, "__bundle_version__")
             @test haskey(file, "__schema_version__")
             @test haskey(file, "bundle")
+            @test file["__bundle_version__"] == string(KeemenaPreprocessing.CURRENT_SCHEMA_VERSION)
+            @test file["__schema_version__"] == string(bundle.metadata.schema_version)
         end
         
         # should load without issues
@@ -161,4 +163,3 @@ end
     rm(test_dir, recursive=true)
 
 end
-

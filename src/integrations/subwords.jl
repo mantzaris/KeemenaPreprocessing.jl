@@ -4,7 +4,8 @@ using ..KeemenaPreprocessing:
     PreprocessConfiguration, SubwordOptions,
     Vocabulary, Corpus, LevelBundle,
     PipelineMetadata, PreprocessBundle,
-    build_vocabulary
+    build_vocabulary,
+    CURRENT_SCHEMA_VERSION
 
 import KeemenaSubwords
 
@@ -188,7 +189,7 @@ function preprocess_subword_native(sources, cfg::PreprocessConfiguration)::Prepr
 
     return PreprocessBundle(
         levels;
-        metadata = PipelineMetadata(cfg, v"1.0.0"),
+        metadata = PipelineMetadata(cfg, CURRENT_SCHEMA_VERSION),
         extras = extras,
     )
 end
@@ -251,7 +252,7 @@ function preprocess_subword_corpus(sources, cfg::PreprocessConfiguration)::Prepr
 
     return PreprocessBundle(
         levels;
-        metadata = PipelineMetadata(cfg, v"1.0.0"),
+        metadata = PipelineMetadata(cfg, CURRENT_SCHEMA_VERSION),
         extras = extras,
     )
 end

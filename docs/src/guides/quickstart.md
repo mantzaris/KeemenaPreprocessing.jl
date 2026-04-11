@@ -72,6 +72,7 @@ docs = [
 ]
 
 cfg = PreprocessConfiguration(
+    cleaning_profile = :subword_cooperative,
     subword = SubwordOptions(
         source = :core_bpe_en,
         mode = :tokenizer_native,
@@ -91,11 +92,15 @@ How to choose mode:
   underlying tokenizer (common for pretrained model workflows).
 * Use `mode = :bundle_reindexed` when you want corpus-owned ids/vocabulary
   managed by KeemenaPreprocessing.
+* Use `cleaning_profile = :subword_cooperative` when you want conservative
+  preprocessing before tokenizer normalization (recommended default for
+  pretrained subword workflows).
 
 Example: bundle-owned ids/vocabulary
 
 ```julia
 cfg = PreprocessConfiguration(
+    cleaning_profile = :subword_cooperative,
     minimum_token_frequency = 2,
     subword = SubwordOptions(
         source = :core_bpe_en,
@@ -117,6 +122,7 @@ using KeemenaSubwords
 
 tok = load_tokenizer(:core_bpe_en)
 cfg = PreprocessConfiguration(
+    cleaning_profile = :subword_cooperative,
     subword = SubwordOptions(source = tok, mode = :tokenizer_native),
 )
 bund = preprocess_corpus(docs; config = cfg)

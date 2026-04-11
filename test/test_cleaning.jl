@@ -408,6 +408,31 @@ end
         @test result[1] == "\"Hello\" and 'world' - with em-dash..."
     end
 
+    @testset "Subword cooperative cleaning profile" begin
+        cfg = KeemenaPreprocessing.PreprocessConfiguration(
+            cleaning_profile = :subword_cooperative,
+            subword = KeemenaPreprocessing.SubwordOptions(source = :core_bpe_en),
+            lowercase = true,
+            strip_accents = true,
+            remove_punctuation = true,
+            replace_urls = true,
+            replace_emails = true,
+            replace_numbers = true,
+        )
+
+        @test cfg.cleaning_profile == :subword_cooperative
+        @test !cfg.lowercase
+        @test !cfg.strip_accents
+        @test !cfg.remove_punctuation
+        @test !cfg.replace_urls
+        @test !cfg.replace_emails
+        @test !cfg.replace_numbers
+
+        docs = ["  Café HELLO, world! Visit https://example.com and email user@example.com. Price: 12.50  "]
+        result = KeemenaPreprocessing._Cleaning.clean_documents(docs, cfg)
+        @test result[1] == "Café HELLO, world! Visit https://example.com and email user@example.com. Price: 12.50"
+    end
+
     @testset "Complex Integration Tests" begin
         
         # Test with all cleaning features enabled
@@ -580,4 +605,3 @@ end
 end
      
     
-

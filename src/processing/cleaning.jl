@@ -440,6 +440,11 @@ The returned vector has the *same length and order* as `docs`.
 The function runs a *fixed* sequence of transformations, each guarded by the
 corresponding flag in `cfg`:
 
+When `cfg.cleaning_profile == :subword_cooperative` and
+`cfg.subword !== nothing`, aggressive edits (`lowercase`, `strip_accents`,
+`remove_punctuation`, URL/email/number replacement) are disabled by
+configuration construction so tokenizer-oriented cleaning stays conservative.
+
 1. **Unicode normalisation** `normalize_unicode` (`unicode_normalisation_form`).
 2. **HTML stripping** `strip_html` + entity decoding (`strip_html_tags`,
    `html_entity_decode`).

@@ -5,7 +5,8 @@ module _Assemble
 
 using ..KeemenaPreprocessing:  PreprocessConfiguration,
                                Vocabulary, Corpus, LevelBundle,
-                               PipelineMetadata, PreprocessBundle
+                               PipelineMetadata, PreprocessBundle,
+                               CURRENT_SCHEMA_VERSION
 
 
 
@@ -41,11 +42,11 @@ Convert the **token-level artefacts** produced by
    | `:byte`                | `:byte`             |
    | `:char`                | `:character`        |
    | `:unicode`, `:whitespace` | `:word`        |
-   | `Function`             | `Symbol(typeof(fn))`|
+   | `Function`             | `:word`             |
    | any other `Symbol`     | same symbol         |
 
 4. Builds a default `PipelineMetadata` header
-   (`PipelineMetadata(cfg, v"1.0.0")`).
+   (`PipelineMetadata(cfg, CURRENT_SCHEMA_VERSION)`).
 5. Returns a `PreprocessBundle` containing *exactly one* level, empty
    `alignments`, and `extras = nothing`.
 
@@ -62,7 +63,7 @@ Convert the **token-level artefacts** produced by
 
 ```julia
 bundle.levels       == Dict(level_key => LevelBundle(corpus, vocab))
-bundle.metadata     == PipelineMetadata(cfg, v"1.0.0")
+bundle.metadata     == PipelineMetadata(cfg, CURRENT_SCHEMA_VERSION)
 bundle.alignments   == Dict{Tuple{Symbol,Symbol},CrossMap}()   # empty
 bundle.extras       == nothing
 ```
@@ -123,7 +124,7 @@ function assemble_bundle(tokens::AbstractVector,
     lb     = LevelBundle(corpus, vocab)
     lvls   = Dict(level => lb)                 # present levels only
 
-    meta = PipelineMetadata(cfg, v"1.0.0")
+    meta = PipelineMetadata(cfg, CURRENT_SCHEMA_VERSION)
 
     return PreprocessBundle(lvls; metadata = meta, extras = nothing)
 

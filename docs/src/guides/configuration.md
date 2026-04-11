@@ -82,6 +82,7 @@ Arguments are grouped by stage; omit any keyword to keep its default.
 | `tokenizer_name` | `:whitespace` | One of [`TOKENIZERS`](@ref built_in_tokenizers) **or** a custom `f(::String)` callable. |
 | `preserve_empty_tokens` | `false` | Keep zero-length tokens if the tokenizer returns them. |
 | `subword` | `nothing` | Activate first-party subword integration with `SubwordOptions(...)` using `mode = :tokenizer_native` or `:bundle_reindexed` (aliases `:native` / `:corpus` accepted). |
+| `cleaning_profile` | `:classic` | `:classic` keeps existing cleaning behavior. `:subword_cooperative` (aliases: `:subword_safe`, `:cooperative`) applies tokenizer-friendly cleaning defaults when `subword !== nothing`. |
 
 ### First-party subwords
 
@@ -102,6 +103,7 @@ Example (most common path: tokenizer-native ids):
 
 ```julia
 cfg = PreprocessConfiguration(
+    cleaning_profile = :subword_cooperative,
     subword = SubwordOptions(
         source = :core_bpe_en,
         mode = :tokenizer_native,
@@ -120,6 +122,17 @@ Mode choice in practice:
   KeemenaSubwords still segments text into pieces, but the bundle remaps ids
   with your `minimum_token_frequency` and `special_tokens` settings.
 
+Cleaning profile in practice:
+
+* `cleaning_profile = :classic`:
+  keep current general corpus-cleaning behavior.
+* `cleaning_profile = :subword_cooperative`:
+  when `subword !== nothing`, use conservative cleaning so tokenizer-side
+  normalization can do the heavy lifting.
+  Specifically this profile disables `lowercase`, `strip_accents`,
+  `remove_punctuation`, `replace_urls`, `replace_emails`, and
+  `replace_numbers`.
+
 Example (bundle-owned ids/vocab):
 
 ```julia
@@ -137,6 +150,8 @@ cfg = PreprocessConfiguration(
 Additional notes:
 
 * Compatibility aliases are accepted (`:native`, `:corpus`, `:tokenizer`, `:bundle`).
+* Cleaning profile aliases are accepted (`:subword_safe`, `:cooperative`).
+* If `cleaning_profile = :subword_cooperative` is set without `subword`, configuration falls back to `:classic` with a warning.
 * When `subword !== nothing`, use `preprocess_corpus` (streaming is not yet supported).
 * Use subword helpers (`get_subword_offsets`, `get_subword_attention_mask`, `get_subword_special_tokens_mask`, `get_subword_metadata`) rather than reading `extras` directly.
 * See [Subwords via KeemenaPreprocessing](@ref guide_subwords) for full end-to-end walkthroughs and decision guidance.

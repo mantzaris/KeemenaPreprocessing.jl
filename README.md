@@ -99,6 +99,7 @@ record offsets, assemble bundle.
 using KeemenaPreprocessing
 
 cfg = PreprocessConfiguration(
+    cleaning_profile = :subword_cooperative,
     subword = SubwordOptions(
         source = :core_bpe_en,   # built-in KeemenaSubwords model key
         mode = :tokenizer_native,
@@ -117,6 +118,7 @@ Subword modes:
 * `mode = :tokenizer_native` keeps tokenizer-native ids (aliases: `:native`, `:tokenizer`).
 * `mode = :bundle_reindexed` rebuilds ids/vocabulary inside KeemenaPreprocessing from tokenizer pieces
   (aliases: `:corpus`, `:bundle`).
+* `cleaning_profile = :subword_cooperative` (aliases: `:subword_safe`, `:cooperative`) keeps subword cleaning conservative by disabling lowercasing, accent stripping, punctuation removal, and URL/email/number replacement when `subword !== nothing`.
 
 Both modes store subword-only artifacts (offsets/masks/metadata) in `bundle.extras`.
 

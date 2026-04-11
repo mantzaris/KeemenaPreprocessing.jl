@@ -4,10 +4,10 @@ module _BundleIO
 
 using CodecZlib
 using JLD2
-using ..KeemenaPreprocessing: PreprocessBundle, PreprocessConfiguration
+using ..KeemenaPreprocessing: PreprocessBundle, PreprocessConfiguration, CURRENT_SCHEMA_VERSION
 
 
-const _BUNDLE_VERSION = v"1.0.0"
+const _BUNDLE_VERSION = CURRENT_SCHEMA_VERSION
 
 
 """
@@ -115,7 +115,15 @@ function load_preprocess_bundle(path::AbstractString; format::Symbol = :jld2)
         if stored > _BUNDLE_VERSION
             error("Bundle version $stored is newer than library $_BUNDLE_VERSION")
         end
-        return jld2_file["bundle"]
+        try
+            return jld2_file["bundle"]
+        catch err
+            error(
+                "Failed to deserialize bundle at $path (stored bundle version $stored, " *
+                "library bundle version $_BUNDLE_VERSION). " *
+                "The file may be from an incompatible schema revision. " *
+                "Original error: $(sprint(showerror, err))")
+        end
     end
 end
 

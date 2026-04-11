@@ -241,6 +241,53 @@
         @test meta_no_view.tokenization_texts[1] == expected_tok_view
         @test meta_no_view.per_document[1].offsets_reference == :tokenizer_normalized_text
 
+        docs_coop = ["Café HELLO, world! Visit https://example.com and email support@example.com."]
+        cfg_coop = KeemenaPreprocessing.PreprocessConfiguration(
+            cleaning_profile = :subword_cooperative,
+            lowercase = true,
+            strip_accents = true,
+            remove_punctuation = true,
+            replace_urls = true,
+            replace_emails = true,
+            subword = KeemenaPreprocessing.SubwordOptions(
+                source = fixture,
+                format = :hf_tokenizer_json,
+                mode = :tokenizer_native,
+                level_name = :subword,
+                add_special_tokens = true,
+                apply_tokenization_view = true,
+                return_offsets = true,
+                return_masks = true,
+            ),
+        )
+        clean_coop = KeemenaPreprocessing.clean_documents(docs_coop, cfg_coop)
+        @test occursin("Café HELLO, world!", clean_coop[1])
+        @test occursin("https://example.com", clean_coop[1])
+        @test occursin("support@example.com", clean_coop[1])
+        @test cfg_coop.cleaning_profile == :subword_cooperative
+
+        bundle_coop = KeemenaPreprocessing.preprocess_corpus(docs_coop; config = cfg_coop)
+        tokenizer_coop = KeemenaSubwords.load_tokenizer(fixture; format = :hf_tokenizer_json)
+        tok_view = KeemenaSubwords.tokenization_view(tokenizer_coop, clean_coop[1])
+        expected_coop = KeemenaSubwords.encode_result(
+            tokenizer_coop, tok_view;
+            add_special_tokens = true,
+            assume_normalized = true,
+            return_offsets = true,
+            return_masks = true,
+        )
+        @test KeemenaPreprocessing.get_token_ids(bundle_coop, :subword) == expected_coop.ids
+        @test KeemenaPreprocessing.get_subword_offsets(bundle_coop)[1] == expected_coop.offsets
+
+        cfg_coop_alias = KeemenaPreprocessing.PreprocessConfiguration(
+            cleaning_profile = :subword_safe,
+            subword = KeemenaPreprocessing.SubwordOptions(
+                source = fixture,
+                format = :hf_tokenizer_json,
+            ),
+        )
+        @test cfg_coop_alias.cleaning_profile == :subword_cooperative
+
         cfg_bad_src = KeemenaPreprocessing.PreprocessConfiguration(
             subword = KeemenaPreprocessing.SubwordOptions(
                 source = 12345,

@@ -22,16 +22,18 @@ that data can be re-processed, inspected, or migrated safely.
 ## Example
 ```julia
 cfg  = PreprocessConfiguration(strip_html_tags = true)
-meta = PipelineMetadata(cfg, v"1.0.0")
+meta = PipelineMetadata(cfg, CURRENT_SCHEMA_VERSION)
 
 @info "tokeniser:" meta.configuration.tokenizer_name
-@assert meta.schema_version >= v"1.0.0"
+@assert meta.schema_version >= CURRENT_SCHEMA_VERSION
 ```
 """
 struct PipelineMetadata
     configuration :: PreprocessConfiguration #cleaning and tokeniser params
     schema_version:: VersionNumber
 end
+
+const CURRENT_SCHEMA_VERSION = v"1.1.0"
 
 """
     PipelineMetadata() -> PipelineMetadata
@@ -40,7 +42,7 @@ Convenience constructor that returns a metadata header with
 
 * the **default** `PreprocessConfiguration()` (all keyword-arguments left at
   their documented defaults); and
-* the current bundle **schema version** `v"1.0.0"`.
+* the current bundle **schema version** `CURRENT_SCHEMA_VERSION`.
 
 Handy for rapid prototyping or unit tests when you do not need to customise the
 pipeline but still require a valid `PipelineMetadata` object.
@@ -48,10 +50,10 @@ pipeline but still require a valid `PipelineMetadata` object.
 Identical to:
 
 ```julia
-PipelineMetadata(PreprocessConfiguration(), v"1.0.0")
+PipelineMetadata(PreprocessConfiguration(), CURRENT_SCHEMA_VERSION)
 ```
 """
-PipelineMetadata() = PipelineMetadata(PreprocessConfiguration(), v"1.0.0")
+PipelineMetadata() = PipelineMetadata(PreprocessConfiguration(), CURRENT_SCHEMA_VERSION)
 
 
 """

@@ -36,11 +36,26 @@ const _SUBWORD_MODE_ALIASES = Dict(
     :bundle => :bundle_reindexed,
 )
 
+const _CLEANING_PROFILE_ALIASES = Dict(
+    :classic => :classic,
+    :subword_cooperative => :subword_cooperative,
+    :subword_safe => :subword_cooperative,
+    :cooperative => :subword_cooperative,
+)
+
 function _canonical_subword_mode(mode::Symbol)::Symbol
     canonical = get(_SUBWORD_MODE_ALIASES, mode, nothing)
     canonical === nothing && error(
         "Unsupported SubwordOptions mode=:$(mode). Supported modes are " *
         ":tokenizer_native and :bundle_reindexed (aliases: :native, :corpus, :tokenizer, :bundle).")
+    return canonical
+end
+
+function _canonical_cleaning_profile(profile::Symbol)::Symbol
+    canonical = get(_CLEANING_PROFILE_ALIASES, profile, nothing)
+    canonical === nothing && error(
+        "Unsupported cleaning_profile=:$(profile). Supported profiles are " *
+        ":classic and :subword_cooperative (aliases: :subword_safe, :cooperative).")
     return canonical
 end
 
@@ -119,6 +134,7 @@ struct PreprocessConfiguration
     tokenizer_name            :: Union{Symbol,Function}
     preserve_empty_tokens     :: Bool
     subword                   :: Union{Nothing,SubwordOptions}
+    cleaning_profile          :: Symbol
 
     # Vocabulary
     minimum_token_frequency   :: Int
@@ -215,6 +231,7 @@ are grouped below by the stage they affect.
 | `tokenizer_name` | `:whitespace` | One of `TOKENIZERS` **or** a callable. |
 | `preserve_empty_tokens` | `false` | Keep zero-length tokens. |
 | `subword` | `nothing` | Activate first-party subword flow via `SubwordOptions(...)` (`mode = :tokenizer_native` or `:bundle_reindexed`; aliases `:native` / `:corpus` accepted). |
+| `cleaning_profile` | `:classic` | `:classic` (current behavior) or `:subword_cooperative` (tokenizer-friendly cleaning when `subword !== nothing`; aliases `:subword_safe`, `:cooperative`). |
 
 # Vocabulary construction
 | keyword | default | purpose |
@@ -282,6 +299,7 @@ function PreprocessConfiguration(;  # all kwargs are optional
         tokenizer_name            = :whitespace,
         preserve_empty_tokens     = false,
         subword                   = nothing,
+        cleaning_profile::Symbol  = :classic,
 
         minimum_token_frequency   = 1,
         special_tokens            = Dict(:unk => "<UNK>", :pad => "<PAD>"), #TODO: expand!!!
@@ -304,8 +322,25 @@ function PreprocessConfiguration(;  # all kwargs are optional
 
     @assert emoji_handling in (:keep, :remove, :sentinel) "emoji_handling must be :keep, :remove, or :sentinel"
     @assert unicode_normalisation_form in (:none, :NFC, :NFD, :NFKC, :NFKD)
+    canonical_cleaning_profile = _canonical_cleaning_profile(cleaning_profile)
     subword !== nothing && !(subword isa SubwordOptions) &&
         error("subword must be nothing or a SubwordOptions instance")
+
+    if canonical_cleaning_profile == :subword_cooperative
+        if subword !== nothing
+            # Cooperative profile keeps generic hygiene but avoids
+            # aggressive text edits that can distort pretrained tokenizer behavior.
+            lowercase = false
+            strip_accents = false
+            remove_punctuation = false
+            replace_urls = false
+            replace_emails = false
+            replace_numbers = false
+        else
+            @warn "cleaning_profile=:subword_cooperative requested without subword=SubwordOptions(...); falling back to cleaning_profile=:classic."
+            canonical_cleaning_profile = :classic
+        end
+    end
 
     specials_dict = copy(special_tokens)
 
@@ -331,11 +366,11 @@ function PreprocessConfiguration(;  # all kwargs are optional
         squeeze_repeat_chars, max_char_run, map_confusables,
         # Unicode & punctuation (29-30)
         unicode_normalisation_form, map_unicode_punctuation,
-        # Tokeniser (31-33)
-        tokenizer_name, preserve_empty_tokens, subword,
-        # Vocabulary (34-35)
+        # Tokeniser (31-34)
+        tokenizer_name, preserve_empty_tokens, subword, canonical_cleaning_profile,
+        # Vocabulary (35-36)
         minimum_token_frequency, specials_dict,
-        # Off-set recording (36-41)
+        # Off-set recording (37-42)
         record_byte_offsets, record_character_offsets, record_word_offsets,
         record_sentence_offsets, record_paragraph_offsets, record_document_offsets
     )

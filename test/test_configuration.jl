@@ -15,6 +15,7 @@ _default_cfg() = KeemenaPreprocessing.PreprocessConfiguration()
     @test cfg.tokenizer_name == :whitespace
     @test !cfg.preserve_empty_tokens
     @test cfg.subword === nothing
+    @test cfg.cleaning_profile == :classic
 
     @test cfg.minimum_token_frequency == 1
     @test cfg.special_tokens[:unk] == "<UNK>"
@@ -44,6 +45,41 @@ end
 end
 
 
+@testset "PreprocessConfiguration - cleaning profile behavior" begin
+    opts = KeemenaPreprocessing.SubwordOptions(source = :core_bpe_en)
+    cfg = KeemenaPreprocessing.PreprocessConfiguration(
+        cleaning_profile = :subword_cooperative,
+        lowercase = true,
+        strip_accents = true,
+        remove_punctuation = true,
+        replace_urls = true,
+        replace_emails = true,
+        replace_numbers = true,
+        subword = opts,
+    )
+
+    @test cfg.cleaning_profile == :subword_cooperative
+    @test !cfg.lowercase
+    @test !cfg.strip_accents
+    @test !cfg.remove_punctuation
+    @test !cfg.replace_urls
+    @test !cfg.replace_emails
+    @test !cfg.replace_numbers
+
+    # compatibility aliases are accepted and canonicalized
+    cfg_alias = KeemenaPreprocessing.PreprocessConfiguration(
+        cleaning_profile = :subword_safe,
+        subword = opts,
+    )
+    @test cfg_alias.cleaning_profile == :subword_cooperative
+
+    cfg_no_subword = @test_logs (:warn, r"falling back to cleaning_profile=:classic") KeemenaPreprocessing.PreprocessConfiguration(
+        cleaning_profile = :subword_cooperative,
+    )
+    @test cfg_no_subword.cleaning_profile == :classic
+end
+
+
 @testset "PreprocessConfiguration - argument checks" begin
     # minimum_token_frequency must be >= 1
     @test_throws AssertionError KeemenaPreprocessing.PreprocessConfiguration(minimum_token_frequency = 0)
@@ -53,6 +89,7 @@ end
 
     # subword must be either nothing or SubwordOptions
     @test_throws ErrorException KeemenaPreprocessing.PreprocessConfiguration(subword = :invalid)
+    @test_throws ErrorException KeemenaPreprocessing.PreprocessConfiguration(cleaning_profile = :invalid_profile)
 
     opts_default = KeemenaPreprocessing.SubwordOptions(source = :core_bpe_en)
     @test opts_default.mode == :tokenizer_native

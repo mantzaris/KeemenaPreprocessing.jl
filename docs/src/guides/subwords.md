@@ -44,6 +44,9 @@ Mode guidance inside the first-party subword path:
 
 * Use `mode = :tokenizer_native` for pretrained-tokenizer-compatible ids.
 * Use `mode = :bundle_reindexed` when KeemenaPreprocessing should own ids/vocab.
+* Use `cleaning_profile = :subword_cooperative` (aliases: `:subword_safe`,
+  `:cooperative`) when you want conservative cleaning before tokenizer
+  normalization.
 
 ---
 
@@ -108,6 +111,7 @@ docs = [
 ]
 
 cfg = PreprocessConfiguration(
+    cleaning_profile = :subword_cooperative,
     subword = SubwordOptions(
         source = :core_bpe_en,          # model key, path, FilesSpec, NamedTuple, or tokenizer object
         mode = :tokenizer_native,       # keep tokenizer-native ids
@@ -132,6 +136,7 @@ For bundle-owned ids:
 
 ```julia
 cfg = PreprocessConfiguration(
+    cleaning_profile = :subword_cooperative,
     subword = SubwordOptions(
         source = :core_bpe_en,
         mode = :bundle_reindexed,   # rebuild ids/vocab inside KeemenaPreprocessing
@@ -156,6 +161,7 @@ using KeemenaSubwords
 tok = load_tokenizer(:core_bpe_en)
 
 cfg = PreprocessConfiguration(
+    cleaning_profile = :subword_cooperative,
     subword = SubwordOptions(
         source = tok,
         mode = :tokenizer_native,
@@ -181,6 +187,30 @@ result = encode_result(tok, "Some text"; return_offsets = true, return_masks = t
 
 This path is useful when you want raw tokenizer-centric workflows without
 corpus vocabulary construction.
+
+---
+
+## Cleaning cooperation with subwords
+
+`cleaning_profile = :subword_cooperative` is the recommended profile for most
+subword model workflows.
+
+With `subword !== nothing`, this profile keeps the existing cleaning pipeline
+but disables aggressive edits that often hurt tokenizer-native parity:
+
+- `lowercase = false`
+- `strip_accents = false`
+- `remove_punctuation = false`
+- `replace_urls = false`
+- `replace_emails = false`
+- `replace_numbers = false`
+
+The rest of the hygiene pipeline (control-character handling, whitespace
+normalization, etc.) still runs as configured.
+
+If you want the original behavior, set `cleaning_profile = :classic`.
+If cooperative cleaning is requested without `subword`, configuration falls
+back to `:classic` with a warning.
 
 ---
 
