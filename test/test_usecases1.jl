@@ -1,17 +1,34 @@
+const ALICE_SNIPPET = """
+Alice was beginning to get very tired of sitting by her sister on the bank,
+and of having nothing to do. Once or twice she had peeped into the book her
+sister was reading, but it had no pictures or conversations in it.
 
+So she was considering in her own mind whether the pleasure of making a
+daisy-chain would be worth the trouble of getting up and picking the daisies,
+when suddenly a White Rabbit with pink eyes ran close by her.
+"""
 
+const TIME_MACHINE_SNIPPET = """
+The Time Traveller was expounding a recondite matter to us. His grey eyes shone
+and twinkled, and his usually pale face was flushed and animated.
 
-ALICE_URL = "https://www.gutenberg.org/files/11/11-0.txt"
-TIME_URL  = "https://www.gutenberg.org/files/35/35-0.txt"
+You must follow me carefully, he said, because I shall have to controvert one
+or two ideas that are almost universally accepted.
+"""
+
+function _write_local_book_fixtures(tmp::AbstractString; repeats::Int = 300)
+    alice_path = joinpath(tmp, "alice.txt")
+    time_path  = joinpath(tmp, "time_machine.txt")
+    write(alice_path, join(fill(ALICE_SNIPPET, repeats), "\n\n"))
+    write(time_path,  join(fill(TIME_MACHINE_SNIPPET, repeats), "\n\n"))
+    return alice_path, time_path
+end
 
 
 @testset "Pipeline - real texts (Alice + Time Machine)" begin
     mktempdir() do tmp
-        #   download the raw books to *files*
-        alice_path = joinpath(tmp, "alice.txt")
-        time_path  = joinpath(tmp, "time_machine.txt")
-        Downloads.download(ALICE_URL, alice_path)
-        Downloads.download(TIME_URL,  time_path)
+        # deterministic local fixtures (no network dependency)
+        alice_path, time_path = _write_local_book_fixtures(tmp)
 
         sources = [alice_path, time_path]
 
@@ -67,11 +84,8 @@ end
 
 @testset "preprocess_corpus_streaming_full - real texts (Alice + Time)" begin
     mktempdir() do tmp
-        # 1 download the novels into the temp dir
-        alice_path = joinpath(tmp, "alice.txt")
-        time_path  = joinpath(tmp, "time_machine.txt")
-        Downloads.download(ALICE_URL, alice_path)
-        Downloads.download(TIME_URL,  time_path)
+        # 1 deterministic local fixtures (no network dependency)
+        alice_path, time_path = _write_local_book_fixtures(tmp)
 
         sources = [alice_path, time_path]
 
@@ -91,7 +105,7 @@ end
 
         # 4 streaming-FULL helper under test
         merged = KeemenaPreprocessing.preprocess_corpus_streaming_full(
-                     sources; cfg = cfg, chunk_tokens = 50_000)   # force >1 chunk
+                     sources; cfg = cfg, chunk_tokens = 8_000)   # force >1 chunk
 
         @test merged isa KeemenaPreprocessing.PreprocessBundle
         @test merged.levels[:word].vocabulary.id_to_token_strings ==
