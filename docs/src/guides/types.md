@@ -142,7 +142,7 @@ hello_id    = get(word_vocabulary.token_to_id_map, "hello", unknown_id)
 (:byte -> :character), (:byte -> :word), (:character -> :word)
 ```
 
-this can answer *'which destination unit contains this source index?'* in O(1) lookups.
+This can answer *'which destination unit contains this source index?'* in O(1) lookups.
 
 **Fields**
 - `source_level      :: Symbol`
@@ -166,7 +166,7 @@ word_ix      = char_to_word.alignment[42]
 
 These membership maps have `length(alignment) == n_source_tokens` (no sentinel): each fine‑grained token is labeled with its containing coarse unit.
 
-### Range maps (coarse -> fine)
+### Coarse -> fine spans
 
 For some tasks you want the *span* of fine tokens that make up a coarse unit. You can derive those spans directly from the coarse level's offsets:
 
@@ -177,9 +177,14 @@ k           = 1
 sent_word_i = wc.sentence_offsets[k] : wc.sentence_offsets[k+1] - 1
 ```
 
-(If you construct a 'range' `CrossMap` yourself, its `alignment` uses sentinel style:
-`length(alignment) == n_destination + 1`, and
-`alignment[i] : alignment[i+1]-1` is the source span of destination unit `i`.)
+You can also derive a source span from a membership `CrossMap` by locating all
+source positions assigned to a destination index:
+
+```julia
+cm = bundle.alignments[(:character, :word)]
+w  = 1
+char_span = findfirst(==(w), cm.alignment) : findlast(==(w), cm.alignment)
+```
 
 ---
 
@@ -216,6 +221,4 @@ raw_str = String(codeunits(bundle.extras.raw_text)[span])
 - `get_token_ids(bundle, :word)` - direct access to the flattened id sequence for a level.
 - `build_ensure_alignments!(bundle)` - guarantees the canonical membership maps exist.
 - `LEVEL_TO_OFFSETS_FIELD` -> symbol -> field lookup for offset vectors (e.g., `:sentence` -> `:sentence_offsets`).
-
-
 

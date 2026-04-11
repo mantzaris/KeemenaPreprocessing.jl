@@ -114,10 +114,21 @@ end
         if haskey(merged.alignments, (:byte, :word))
             cmap = merged.alignments[(:byte, :word)]
             src_ids = KeemenaPreprocessing.get_token_ids(merged, :byte)
+            dst_ids = KeemenaPreprocessing.get_token_ids(merged, :word)
 
-            for i in rand(1:length(src_ids), min(20, length(src_ids)))
-                w = cmap.forward[i]
-                @test cmap.backward[w] == i
+            @test cmap.source_level == :byte
+            @test cmap.destination_level == :word
+            @test length(cmap.alignment) == length(src_ids)
+
+            if !isempty(src_ids)
+                @test !isempty(dst_ids)
+                @test issorted(cmap.alignment)
+                @test all(w -> 1 <= w <= length(dst_ids), cmap.alignment)
+
+                for i in rand(1:length(src_ids), min(20, length(src_ids)))
+                    w = cmap.alignment[i]
+                    @test 1 <= w <= length(dst_ids)
+                end
             end
         end
     end

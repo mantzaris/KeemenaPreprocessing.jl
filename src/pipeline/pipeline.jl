@@ -167,23 +167,30 @@ end
 
 
 """
-    preprocess_corpus_streaming_chunks(srcs; kwargs...) -> 4Vector{PreprocessBundle}
+    preprocess_corpus_streaming_chunks(srcs;
+                                       cfg = PreprocessConfiguration(),
+                                       vocab = nothing,
+                                       chunk_tokens = DEFAULT_CHUNK_TOKENS) -> 4Vector{PreprocessBundle}
 
 Run the streaming pipeline **once**, eagerly consume the channel,
 and return a `Vector` whose `i`-th entry is the `PreprocessBundle`
 covering chunk *i*.
 
-Identical keyword interface to `preprocess_corpus_streaming`;
-all arguments are forwarded unchanged.
+Keyword interface mirrors `preprocess_corpus_streaming`:
+`cfg`, `vocab`, and `chunk_tokens`.
+Configuration options such as `strip_html_tags` or
+`minimum_token_frequency` must be placed in `cfg`.
 
 Use when you want chunked artefacts (e.g. sharding a
 massive corpus across GPUs) **but** prefer a materialised vector
 instead of an explicit `Channel`.
 
 ```julia
+cfg = PreprocessConfiguration(strip_html_tags = true)
+
 bundles = preprocess_corpus_streaming_chunks("wiki_xml/*";
-                                   chunk_tokens = 250_000,
-                                   strip_html_tags = true)
+                                   cfg = cfg,
+                                   chunk_tokens = 250_000)
 @info "produced (length(bundles)) bundles"
 ```
 """
@@ -201,25 +208,31 @@ function _streaming_primary_level(cfg::PreprocessConfiguration)::Symbol
            tk === :char       ? :character :
            tk === :unicode    ? :word :
            tk === :whitespace ? :word :
-           tk isa Function    ? :word :
+           (!(tk isa Symbol) && applicable(tk, "")) ? :word :
            tk isa Symbol      ? tk :
            :word
 end
 
 
 """
-preprocess_corpus_streaming_full(srcs; kwargs...) -> PreprocessBundle
+preprocess_corpus_streaming_full(srcs;
+                                 cfg = PreprocessConfiguration(),
+                                 vocab = nothing,
+                                 chunk_tokens = DEFAULT_CHUNK_TOKENS) -> PreprocessBundle
 
 Run the streaming pipeline, merge every chunk on the fly,
 and return one single PreprocessBundle that spans the
 entire corpus.
 
-All keyword arguments are forwarded to preprocess_corpus_streaming.
+Keyword arguments are forwarded to `preprocess_corpus_streaming`.
+In practice this means `cfg`, `vocab`, and `chunk_tokens`.
 Throws when chunks were built with incompatible vocabularies
 
 ```julia
+cfg = PreprocessConfiguration(minimum_token_frequency = 5)
+
 bund = preprocess_corpus_streaming_full(["en.txt", "de.txt"];
-                              minimum_token_frequency = 5)
+                              cfg = cfg)
 println("corpus length: ", length(get_token_ids(bund, :word)))
 ```
 """

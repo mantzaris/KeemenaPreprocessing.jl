@@ -153,6 +153,15 @@ Additional notes:
 * Cleaning profile aliases are accepted (`:subword_safe`, `:cooperative`).
 * If `cleaning_profile = :subword_cooperative` is set without `subword`, configuration falls back to `:classic` with a warning.
 * `subword !== nothing` works with `preprocess_corpus`, `preprocess_corpus_streaming`, `preprocess_corpus_streaming_chunks`, and `preprocess_corpus_streaming_full`.
+* Important structural-offset scope in first-party subword mode:
+  subword bundles currently store `document_offsets` on `bundle.levels[:subword]`.
+  Do not assume `record_byte_offsets`, `record_character_offsets`,
+  `record_word_offsets`, `record_sentence_offsets`, or
+  `record_paragraph_offsets` will materialize corresponding structural offsets
+  on the subword corpus.
+* Alignment scope in first-party subword mode:
+  byte/character/word alignment maps are not auto-generated from a subword-only
+  bundle.
 * Use subword helpers (`get_subword_offsets`, `get_subword_attention_mask`, `get_subword_token_type_ids`, `get_subword_special_tokens_mask`, `get_subword_metadata`) rather than reading `extras` directly.
 * See [Subwords via KeemenaPreprocessing](@ref guide_subwords) for full end-to-end walkthroughs and decision guidance.
 
@@ -173,6 +182,13 @@ Additional notes:
 | `record_sentence_offsets`  | `true`  | Record sentence offsets. |
 | `record_paragraph_offsets` | `false` | Record paragraph offsets (forces `preserve_newlines = true`). |
 | `record_document_offsets`  | `true`  | Record document offsets. |
+
+Note:
+
+* The table above describes the generic tokenizer pipeline.
+* In first-party subword mode (`subword !== nothing`), only
+  `document_offsets` are stored on the `:subword` corpus. Other structural
+  offset vectors are not currently populated there.
 
 ---
 

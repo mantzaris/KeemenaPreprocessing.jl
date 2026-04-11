@@ -153,9 +153,12 @@ println(pieces)
 
 Output looks like subword-ish pieces (often including leading-space pieces like `" world"`).
 
-### Recommended, wrap the callable object in a plain function
+### Callable objects work directly (no wrapper required)
 
-Some configurations validate `tokenizer_name` with `isa Function`. Since `BPETokenizer` is callable but not a `Function`, the most robust pattern is to wrap it:
+You can pass callable tokenizer objects directly to
+`PreprocessConfiguration(tokenizer_name = ...)`. They do not need to be
+subtypes of `Function`; if the object is callable with `AbstractString`,
+Keemena accepts it.
 
 ```julia
 using KeemenaPreprocessing
@@ -163,11 +166,8 @@ import BytePairEncoding
 
 bpe = BytePairEncoding.load_tiktoken("cl100k_base")
 
-# Wrap the callable struct in a plain function.
-bpe_function(text::AbstractString)::Vector{String} = bpe(text)
-
 cfg = PreprocessConfiguration(
-    tokenizer_name = bpe_function,
+    tokenizer_name = bpe,
 
     # Recommended for BPE: avoid splitting text before tokenization.
     # Many BPE tokenizers are sensitive to boundary context.
@@ -193,6 +193,14 @@ println("Number of BPE tokens: ", length(subword_corpus.token_ids))
 subword_vocab = get_vocabulary(bundle, :word)
 println("First 30 vocab strings: ", subword_vocab.id_to_token_strings[1:min(end, 30)])
 ```
+
+Optional normalization wrapper:
+
+```julia
+bpe_tokens(text::AbstractString)::Vector{String} = String.(bpe(text))
+```
+
+Use this only if you want to enforce a specific element type in your own code.
 
 Important: in the callable path, Keemena stores the primary string-token stream under `:word` even when the tokenizer returns subword pieces (BPE). The dedicated first-party subword path stores tokenizer-native ids under `:subword` by default.
 

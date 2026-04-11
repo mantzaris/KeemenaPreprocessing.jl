@@ -70,6 +70,8 @@ struct SubwordOptions
     return_masks            :: Bool
 end
 
+_is_custom_tokenizer_callable(tk) = !(tk isa Symbol) && applicable(tk, "")
+
 function SubwordOptions(;
         source,
         format::Symbol = :auto,
@@ -131,7 +133,7 @@ struct PreprocessConfiguration
     map_unicode_punctuation   :: Bool
 
     # Tokenisation
-    tokenizer_name            :: Union{Symbol,Function}
+    tokenizer_name            :: Any
     preserve_empty_tokens     :: Bool
     subword                   :: Union{Nothing,SubwordOptions}
     cleaning_profile          :: Symbol
@@ -313,7 +315,9 @@ function PreprocessConfiguration(;  # all kwargs are optional
 
     @assert minimum_token_frequency >= 1 "minimum_token_frequency must be >= 1"
 
-    @assert (tokenizer_name in TOKENIZERS) || (tokenizer_name isa Function)  "tokenizer_name must be one of $(TOKENIZERS) or a callable."
+    @assert (tokenizer_name in TOKENIZERS) || _is_custom_tokenizer_callable(tokenizer_name) (
+        "tokenizer_name must be one of $(TOKENIZERS) or a callable object " *
+        "that accepts an AbstractString.")
 
     if record_paragraph_offsets && !preserve_newlines
         @warn "record_paragraph_offsets=true but preserve_newlines=false; enabling preserve_newlines to keep paragraph boundaries."

@@ -265,12 +265,21 @@ back to `:classic` with a warning.
     `:bundle_reindexed`),
   - level vocabulary matching the selected mode,
   - document offsets for token slicing.
+  - structural offsets beyond `document_offsets` are not currently populated on
+    the subword corpus (`byte_offsets`, `character_offsets`, `word_offsets`,
+    `sentence_offsets`, `paragraph_offsets` remain `nothing`).
 - `bundle.extras` (via accessor helpers):
   - per-document subword offsets,
   - attention masks,
   - token type ids,
   - special token masks,
   - tokenizer metadata and tokenization texts.
+
+Alignment note:
+
+- Subword-only bundles do not auto-create byte/character/word alignment maps.
+- Streaming merged bundles rebuild alignments only when a `:word` level is
+  present.
 
 `get_subword_metadata(bundle).tokenization_texts` stores the tokenizer-view
 text used as the offset reference (tokenizer-normalized text).

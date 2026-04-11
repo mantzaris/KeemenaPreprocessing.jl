@@ -10,8 +10,8 @@ Internally it runs in **two passes**:
 2. **Chunk pass** - documents are grouped into slices of *≈ `chunk_tokens`*
    and each slice becomes a `PreprocessBundle`.
 
-Three helpers expose the same keywords as `preprocess_corpus` but differ in
-how you consume the results:
+Three helpers expose streaming-specific keywords and differ in how you consume
+the results:
 
 | Helper | Returns | Best when … |
 | ------ | ------- | ----------- |
@@ -63,8 +63,7 @@ Internally identical to `collect(preprocess_corpus_streaming(...))`.
 ```julia
 bundle = preprocess_corpus_streaming_full(["en.txt", "de.txt"];
                                         cfg          = cfg,
-                                        chunk_tokens = 50_000,
-                                        minimum_token_frequency = 5)
+                                        chunk_tokens = 50_000)
 
 @info "corpus length: (length(get_token_ids(bundle, :word)))"
 ```
@@ -74,7 +73,8 @@ If `cfg.subword !== nothing`, query `:subword` instead:
 
 * Merges each chunk into an accumulator in constant memory.  
 * Verifies all chunks share the same `Vocabulary` and `cfg`.  
-* Calls `build_ensure_alignments!` to regenerate byte/char <-> word maps.
+* Calls `build_ensure_alignments!` to regenerate byte/char <-> word maps when a
+  `:word` level is present.
 
 ---
 
@@ -121,9 +121,17 @@ last(offsets)  >= n_tokens
 ## Helper signatures (for reference)
 
 ```julia
-preprocess_corpus_streaming_chunks(srcs; kwargs...) -> Vector{PreprocessBundle}
+preprocess_corpus_streaming_chunks(srcs;
+    cfg           = PreprocessConfiguration(),
+    vocab         = nothing,
+    chunk_tokens  = DEFAULT_CHUNK_TOKENS
+) -> Vector{PreprocessBundle}
 
-preprocess_corpus_streaming_full(srcs; kwargs...)  -> PreprocessBundle
+preprocess_corpus_streaming_full(srcs;
+    cfg           = PreprocessConfiguration(),
+    vocab         = nothing,
+    chunk_tokens  = DEFAULT_CHUNK_TOKENS
+) -> PreprocessBundle
 
 preprocess_corpus_streaming(srcs;
     cfg           = PreprocessConfiguration(),
@@ -132,8 +140,9 @@ preprocess_corpus_streaming(srcs;
 ) -> Channel{PreprocessBundle}
 ```
 
-All keyword arguments are forwarded unchanged.  
-See `PreprocessConfiguration` for the full list.
+Only `cfg`, `vocab`, and `chunk_tokens` are accepted directly by the streaming
+entrypoints. Put cleaning/tokenization/vocabulary options inside
+`cfg = PreprocessConfiguration(...)`.
 
 
 ## Benchmarks (indicative)

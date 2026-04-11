@@ -12,12 +12,13 @@ using ..KeemenaPreprocessing:  PreprocessConfiguration,
 
 # Internal: map tokenizer choice to the canonical base level name used in bundle.levels.
 # Custom callable tokenizers are treated as word-level tokenizers.
+_is_custom_tokenizer_callable(tk) = !(tk isa Symbol) && applicable(tk, "")
 _base_token_level(tk) =
     tk === :byte       ? :byte :
     tk === :char       ? :character :
     tk === :unicode    ? :word :
     tk === :whitespace ? :word :
-    tk isa Function    ? :word :
+    _is_custom_tokenizer_callable(tk) ? :word :
     tk isa Symbol      ? tk :
     :word
 
@@ -42,7 +43,7 @@ Convert the **token-level artefacts** produced by
    | `:byte`                | `:byte`             |
    | `:char`                | `:character`        |
    | `:unicode`, `:whitespace` | `:word`        |
-   | `Function`             | `:word`             |
+   | callable object/function | `:word`           |
    | any other `Symbol`     | same symbol         |
 
 4. Builds a default `PipelineMetadata` header

@@ -180,6 +180,21 @@ end
         @test length(bundle.levels) == 1
     end
 
+    @testset "Callable struct tokenizer name" begin
+        struct StructTokenizerForAssembleTest end
+        (t::StructTokenizerForAssembleTest)(text::AbstractString) = String.(split(text, '-'))
+
+        tokens = ["test", "tokens"]
+        vocab = _test_vocab(["test", "tokens"])
+        offsets = Dict(:document => [1, 3])
+        cfg = KeemenaPreprocessing.PreprocessConfiguration(
+            tokenizer_name = StructTokenizerForAssembleTest())
+
+        bundle = KeemenaPreprocessing._Assemble.assemble_bundle(tokens, offsets, vocab, cfg)
+        @test haskey(bundle.levels, :word)
+        @test length(bundle.levels) == 1
+    end
+
 
     @testset "Metadata preservation" begin
         tokens = ["test"]
@@ -241,4 +256,3 @@ end
     end
 
 end
-

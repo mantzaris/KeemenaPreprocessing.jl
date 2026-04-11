@@ -216,13 +216,20 @@
             src_ids = get_token_ids(b, src)
             dst_ids = get_token_ids(b, dst)
 
-            @test length(cmap.forward) == length(src_ids)
-            @test length(cmap.backward) == length(dst_ids)
+            @test cmap.source_level == src
+            @test cmap.destination_level == dst
+            @test length(cmap.alignment) == length(src_ids)
 
-            # spot-check bijection on 20 random src indices (or all if tiny)
-            for i in rand(1:length(src_ids), min(20,length(src_ids)))
-                j = cmap.forward[i]
-                @test cmap.backward[j] == i
+            if !isempty(src_ids)
+                @test !isempty(dst_ids)
+                @test issorted(cmap.alignment)
+                @test all(j -> 1 <= j <= length(dst_ids), cmap.alignment)
+
+                # spot-check source -> destination projections
+                for i in rand(1:length(src_ids), min(20,length(src_ids)))
+                    j = cmap.alignment[i]
+                    @test 1 <= j <= length(dst_ids)
+                end
             end
         end
     end
@@ -249,6 +256,5 @@
 
 
 end
-
 
 

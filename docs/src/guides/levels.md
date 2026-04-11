@@ -53,7 +53,7 @@ spans = getfield(corpus, field)
 | Pipeline call | Levels you always get |
 |---------------|-----------------------|
 | `preprocess_corpus` | generic mode: `:byte`, `:character`, `:word` (+ optional sentence/paragraph); subword mode: `:subword` |
-| `preprocess_corpus_streaming*` | same per chunk; merge helper rebuilds alignments |
+| `preprocess_corpus_streaming*` | same per chunk; merge helper rebuilds byte/char/word alignments when a `:word` level is present |
 
 ### Helper functions
 

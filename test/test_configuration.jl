@@ -84,8 +84,15 @@ end
     # minimum_token_frequency must be >= 1
     @test_throws AssertionError KeemenaPreprocessing.PreprocessConfiguration(minimum_token_frequency = 0)
 
-    # tokenizer_name must be valid Symbol or Function
+    # tokenizer_name must be a built-in Symbol or any callable object
     @test_throws AssertionError KeemenaPreprocessing.PreprocessConfiguration(tokenizer_name = :invalid_tok)
+    @test_throws AssertionError KeemenaPreprocessing.PreprocessConfiguration(tokenizer_name = 12345)
+
+    struct StructTokenizerForConfigTest end
+    (t::StructTokenizerForConfigTest)(text::AbstractString) = String.(split(text))
+    cfg_callable = KeemenaPreprocessing.PreprocessConfiguration(
+        tokenizer_name = StructTokenizerForConfigTest())
+    @test cfg_callable.tokenizer_name isa StructTokenizerForConfigTest
 
     # subword must be either nothing or SubwordOptions
     @test_throws ErrorException KeemenaPreprocessing.PreprocessConfiguration(subword = :invalid)

@@ -25,13 +25,14 @@ _byte_tokenizer(str::AbstractString) = collect(codeunits(str))   # Vector{UInt8}
 
 _char_tokenizer(s::AbstractString) = [ String(g) for g in graphemes(s) ]
 
+_is_custom_tokenizer_callable(tk) = !(tk isa Symbol) && applicable(tk, "")
 
 _select_tokenizer(tk) =
-    tk isa Function    ? tk :
     tk === :char       ? _char_tokenizer :
     tk === :unicode    ? _unicode_tokenizer :
     tk === :whitespace ? _ws_tokenizer :
     tk === :byte       ? _byte_tokenizer  :
+    _is_custom_tokenizer_callable(tk) ? tk :
     error("Unknown tokenizer $(tk); should have been validated earlier")
 
 

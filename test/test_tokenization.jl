@@ -59,6 +59,24 @@ end
 end
 
 
+@testset "tokenize_and_segment - callable struct tokenizer" begin
+    struct PipeTokenizer end
+    (t::PipeTokenizer)(text::AbstractString) = String.(split(text, '|'))
+
+    cfg = KeemenaPreprocessing.PreprocessConfiguration(
+        tokenizer_name = PipeTokenizer(),
+        record_sentence_offsets = false,
+        record_document_offsets = true,
+        record_word_offsets = true,
+    )
+
+    tokens, offs = KeemenaPreprocessing._Tokenization.tokenize_and_segment(["aa|bb|cc"], cfg)
+    @test tokens == ["aa", "bb", "cc"]
+    _assert_sentinel(offs[:word], 3)
+    _assert_sentinel(offs[:document], 3)
+end
+
+
 #character tokenizer with character offsets
 @testset "tokenize_and_segment - char tokenizer + char offsets" begin
     cfg = KeemenaPreprocessing.PreprocessConfiguration(tokenizer_name = :char,
