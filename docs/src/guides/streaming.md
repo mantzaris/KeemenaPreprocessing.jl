@@ -114,6 +114,7 @@ last(offsets)  >= n_tokens
 |---------|--------|
 | Producer stalls because channel is not consumed | Use `foreach` or collect-based helpers. |
 | Mixing configs or vocabularies then concatenating by hand | Use `preprocess_corpus_streaming_full`, which throws on mismatch. |
+| `subword.mode = :tokenizer_native` with custom `vocab` that is only same-size, not same id mapping | Provide the exact tokenizer-native vocabulary, or pass `vocab = nothing` and let streaming build it (accepted vocab keeps your frequencies, but mapping/special ids are normalized to tokenizer-native canonical values). |
 | Chunk size too small (< 2 k tokens) | Causes task-switch overhead; start at 10 k. |
 | Adding new levels with different sentinel rules | Extend the merge the helper sentinel logic and add a test. |
 

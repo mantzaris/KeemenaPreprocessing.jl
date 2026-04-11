@@ -636,7 +636,59 @@
         prebuilt_vocab = baseline.levels[:subword].vocabulary
         chunks_with_vocab = collect(KeemenaPreprocessing.preprocess_corpus_streaming(
             docs; cfg = cfg, vocab = prebuilt_vocab, chunk_tokens = chunk_tokens))
-        @test all(b -> b.levels[:subword].vocabulary === prebuilt_vocab, chunks_with_vocab)
+        @test all(b -> b.levels[:subword].vocabulary.id_to_token_strings ==
+                       prebuilt_vocab.id_to_token_strings, chunks_with_vocab)
+        @test all(b -> b.levels[:subword].vocabulary.token_to_id_map ==
+                       prebuilt_vocab.token_to_id_map, chunks_with_vocab)
+        @test all(b -> b.levels[:subword].vocabulary.special_tokens ==
+                       prebuilt_vocab.special_tokens, chunks_with_vocab)
+        @test all(b -> b.levels[:subword].vocabulary.token_frequencies ==
+                       prebuilt_vocab.token_frequencies, chunks_with_vocab)
+
+        @test length(prebuilt_vocab.id_to_token_strings) >= 2
+        bad_tokens = copy(prebuilt_vocab.id_to_token_strings)
+        bad_tokens[1], bad_tokens[2] = bad_tokens[2], bad_tokens[1]
+        bad_vocab = KeemenaPreprocessing.Vocabulary(
+            bad_tokens,
+            Dict(tok => i for (i, tok) in enumerate(bad_tokens)),
+            copy(prebuilt_vocab.token_frequencies),
+            copy(prebuilt_vocab.special_tokens),
+        )
+        @test_throws ErrorException KeemenaPreprocessing.preprocess_corpus_streaming(
+            docs; cfg = cfg, vocab = bad_vocab, chunk_tokens = chunk_tokens)
+
+        # same token order but mismatched special-token ids should fail
+        @test !isempty(prebuilt_vocab.special_tokens)
+        bad_specials = copy(prebuilt_vocab.special_tokens)
+        key = first(keys(bad_specials))
+        n_vocab = length(prebuilt_vocab.id_to_token_strings)
+        bad_specials[key] = (bad_specials[key] % n_vocab) + 1
+        bad_special_vocab = KeemenaPreprocessing.Vocabulary(
+            copy(prebuilt_vocab.id_to_token_strings),
+            Dict(prebuilt_vocab.token_to_id_map),
+            copy(prebuilt_vocab.token_frequencies),
+            bad_specials,
+        )
+        @test_throws ErrorException KeemenaPreprocessing.preprocess_corpus_streaming(
+            docs; cfg = cfg, vocab = bad_special_vocab, chunk_tokens = chunk_tokens)
+
+        # correct mapping with custom frequencies should be accepted and preserved
+        custom_freqs = collect(1:length(prebuilt_vocab.token_frequencies))
+        custom_vocab = KeemenaPreprocessing.Vocabulary(
+            copy(prebuilt_vocab.id_to_token_strings),
+            Dict(prebuilt_vocab.token_to_id_map),
+            custom_freqs,
+            copy(prebuilt_vocab.special_tokens),
+        )
+        chunks_with_custom_freqs = collect(KeemenaPreprocessing.preprocess_corpus_streaming(
+            docs; cfg = cfg, vocab = custom_vocab, chunk_tokens = chunk_tokens))
+        @test !isempty(chunks_with_custom_freqs)
+        @test all(b -> b.levels[:subword].vocabulary.id_to_token_strings ==
+                       prebuilt_vocab.id_to_token_strings, chunks_with_custom_freqs)
+        @test all(b -> b.levels[:subword].vocabulary.special_tokens ==
+                       prebuilt_vocab.special_tokens, chunks_with_custom_freqs)
+        @test all(b -> b.levels[:subword].vocabulary.token_frequencies ==
+                       custom_freqs, chunks_with_custom_freqs)
     end
 
     @testset "streaming bundle-reindexed subword parity" begin

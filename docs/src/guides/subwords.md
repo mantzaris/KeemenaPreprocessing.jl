@@ -182,6 +182,12 @@ merged = preprocess_corpus_streaming_full("data/*"; cfg = cfg, chunk_tokens = 25
 ids = get_token_ids(merged, :subword)
 ```
 
+If you pass `vocab = ...` with `mode = :tokenizer_native`, that vocabulary must
+exactly match the tokenizer-native id mapping (same token id order and
+special-token ids). Use `vocab = nothing` to auto-build the canonical native
+vocabulary. When accepted, mapping/special ids are normalized to the canonical
+tokenizer-native mapping while preserving your provided `token_frequencies`.
+
 Practical guidance:
 
 - Use `:tokenizer_native` when downstream code expects tokenizer-native ids.

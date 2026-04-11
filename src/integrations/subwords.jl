@@ -364,11 +364,27 @@ function _validate_streaming_subword_vocab(vocab::Vocabulary,
                                            opts::SubwordOptions,
                                            tokenizer)::Vocabulary
     if opts.mode == :tokenizer_native
-        expected_size = KeemenaSubwords.vocab_size(tokenizer)
-        actual_size = length(vocab.id_to_token_strings)
-        actual_size == expected_size || error(
-            "Provided vocabulary size $actual_size does not match tokenizer vocabulary size $expected_size for mode=:tokenizer_native.")
-        return vocab
+        expected = _native_vocabulary(tokenizer)
+        if vocab.id_to_token_strings != expected.id_to_token_strings
+            error("Provided vocabulary does not match tokenizer-native id ordering for mode=:tokenizer_native.")
+        end
+        if vocab.token_to_id_map != expected.token_to_id_map
+            error("Provided vocabulary token_to_id_map does not match tokenizer-native mapping for mode=:tokenizer_native.")
+        end
+        if vocab.special_tokens != expected.special_tokens
+            error("Provided vocabulary special_tokens do not match tokenizer-native special token ids for mode=:tokenizer_native.")
+        end
+        length(vocab.token_frequencies) == length(expected.id_to_token_strings) || error(
+            "Provided vocabulary token_frequencies length does not match tokenizer vocabulary size for mode=:tokenizer_native.")
+
+        # Normalize mapping/specials to the canonical tokenizer-native reference,
+        # while preserving caller-provided frequencies.
+        return Vocabulary(
+            copy(expected.id_to_token_strings),
+            Dict(expected.token_to_id_map),
+            copy(vocab.token_frequencies),
+            Dict(expected.special_tokens),
+        )
     elseif opts.mode == :bundle_reindexed
         haskey(vocab.special_tokens, :unk) || error(
             "Provided vocabulary must include :unk when mode=:bundle_reindexed.")
