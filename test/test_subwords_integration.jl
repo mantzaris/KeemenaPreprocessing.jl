@@ -628,6 +628,11 @@
         total_chunk_tokens = sum(length(KeemenaPreprocessing.get_token_ids(b, :subword)) for b in chunks)
         @test total_chunk_tokens == length(KeemenaPreprocessing.get_token_ids(merged, :subword))
 
+        bounded_stream = KeemenaPreprocessing.preprocess_corpus_streaming(
+            docs; cfg = cfg, chunk_tokens = chunk_tokens, channel_capacity = 2)
+        @test getfield(bounded_stream, :sz_max) == 2
+        @test !isempty(collect(bounded_stream))
+
         prebuilt_vocab = baseline.levels[:subword].vocabulary
         chunks_with_vocab = collect(KeemenaPreprocessing.preprocess_corpus_streaming(
             docs; cfg = cfg, vocab = prebuilt_vocab, chunk_tokens = chunk_tokens))

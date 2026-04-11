@@ -381,9 +381,12 @@ end
 function preprocess_subword_streaming(srcs;
                                       cfg::PreprocessConfiguration,
                                       vocab::Union{Nothing,Vocabulary} = nothing,
-                                      chunk_tokens::Int = 500_000)::Channel{PreprocessBundle}
+                                      chunk_tokens::Int = 500_000,
+                                      channel_capacity::Int = 1)::Channel{PreprocessBundle}
     opts = cfg.subword
     opts === nothing && error("preprocess_subword_streaming requires cfg.subword to be set")
+    channel_capacity >= 0 || throw(ArgumentError(
+        "channel_capacity must be >= 0; got $channel_capacity"))
 
     tokenizer = _resolve_subword_tokenizer(opts)
 
@@ -405,7 +408,7 @@ function preprocess_subword_streaming(srcs;
     raw_chunks = _parent_function(:doc_chunk_iterator)(srcs, cfg; chunk_tokens = chunk_tokens)
     clean_documents = _parent_function(:clean_documents)
 
-    return Channel{PreprocessBundle}(Inf) do ch
+    return Channel{PreprocessBundle}(channel_capacity) do ch
         for docs in raw_chunks
             clean_docs = clean_documents(docs, cfg)
             bundle = if opts.mode == :tokenizer_native

@@ -15,7 +15,7 @@ the results:
 
 | Helper | Returns | Best when … |
 | ------ | ------- | ----------- |
-| `preprocess_corpus_streaming` | `Channel{PreprocessBundle}` | You want back-pressure inside a training loop. |
+| `preprocess_corpus_streaming` | `Channel{PreprocessBundle}` | You want bounded prefetch plus back-pressure inside a training loop. |
 | `preprocess_corpus_streaming_chunks` | `Vector{PreprocessBundle}` | You prefer materialised chunks (e.g. GPU sharding). |
 | `preprocess_corpus_streaming_full` | `PreprocessBundle` | You need one big bundle but can't load the raw corpus at once. |
 
@@ -38,8 +38,9 @@ for bund in ch                      # JIT production, O(1 chunk) RAM
 end
 ```
 
-*The channel is **unbuffered** - a new bundle is produced only
-when the consumer is ready.*
+*The channel is **bounded** (default `channel_capacity = 1`): the producer can
+stay at most one bundle ahead. Set `channel_capacity = 0` for strict
+rendezvous semantics.*
 
 ---
 
@@ -124,24 +125,28 @@ last(offsets)  >= n_tokens
 preprocess_corpus_streaming_chunks(srcs;
     cfg           = PreprocessConfiguration(),
     vocab         = nothing,
-    chunk_tokens  = DEFAULT_CHUNK_TOKENS
+    chunk_tokens  = DEFAULT_CHUNK_TOKENS,
+    channel_capacity = 1
 ) -> Vector{PreprocessBundle}
 
 preprocess_corpus_streaming_full(srcs;
     cfg           = PreprocessConfiguration(),
     vocab         = nothing,
-    chunk_tokens  = DEFAULT_CHUNK_TOKENS
+    chunk_tokens  = DEFAULT_CHUNK_TOKENS,
+    channel_capacity = 1
 ) -> PreprocessBundle
 
 preprocess_corpus_streaming(srcs;
     cfg           = PreprocessConfiguration(),
     vocab         = nothing,
-    chunk_tokens  = DEFAULT_CHUNK_TOKENS
+    chunk_tokens  = DEFAULT_CHUNK_TOKENS,
+    channel_capacity = 1
 ) -> Channel{PreprocessBundle}
 ```
 
-Only `cfg`, `vocab`, and `chunk_tokens` are accepted directly by the streaming
-entrypoints. Put cleaning/tokenization/vocabulary options inside
+Only `cfg`, `vocab`, `chunk_tokens`, and `channel_capacity` are accepted
+directly by the streaming entrypoints. Put
+cleaning/tokenization/vocabulary options inside
 `cfg = PreprocessConfiguration(...)`.
 
 

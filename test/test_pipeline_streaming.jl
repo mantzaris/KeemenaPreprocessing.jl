@@ -10,11 +10,29 @@
         
         # test streaming preprocessing
         stream = KeemenaPreprocessing.preprocess_corpus_streaming(test_docs, cfg=cfg)
+        @test getfield(stream, :sz_max) == 1
         bundles = collect(stream)
         
         @test length(bundles) >= 1
         @test all(bundle -> bundle isa KeemenaPreprocessing.PreprocessBundle, bundles)
         @test all(bundle -> haskey(bundle.levels, :word), bundles)
+    end
+
+    @testset "preprocess_corpus_streaming channel capacity controls buffering" begin
+        cfg = KeemenaPreprocessing.PreprocessConfiguration(tokenizer_name = :whitespace)
+
+        stream_rendezvous = KeemenaPreprocessing.preprocess_corpus_streaming(
+            test_docs; cfg = cfg, channel_capacity = 0)
+        @test getfield(stream_rendezvous, :sz_max) == 0
+        @test !isempty(collect(stream_rendezvous))
+
+        stream_custom = KeemenaPreprocessing.preprocess_corpus_streaming(
+            test_docs; cfg = cfg, channel_capacity = 3)
+        @test getfield(stream_custom, :sz_max) == 3
+        @test !isempty(collect(stream_custom))
+
+        @test_throws ArgumentError KeemenaPreprocessing.preprocess_corpus_streaming(
+            test_docs; cfg = cfg, channel_capacity = -1)
     end
 
     @testset "preprocess_corpus_streaming with vocab" begin
@@ -256,5 +274,4 @@
 
 
 end
-
 

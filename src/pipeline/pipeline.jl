@@ -1,6 +1,7 @@
 
 
 const DEFAULT_CHUNK_TOKENS = 500_000
+const DEFAULT_STREAM_CHANNEL_CAPACITY = 1
 
 
 """
@@ -170,14 +171,15 @@ end
     preprocess_corpus_streaming_chunks(srcs;
                                        cfg = PreprocessConfiguration(),
                                        vocab = nothing,
-                                       chunk_tokens = DEFAULT_CHUNK_TOKENS) -> 4Vector{PreprocessBundle}
+                                       chunk_tokens = DEFAULT_CHUNK_TOKENS,
+                                       channel_capacity = DEFAULT_STREAM_CHANNEL_CAPACITY) -> Vector{PreprocessBundle}
 
 Run the streaming pipeline **once**, eagerly consume the channel,
 and return a `Vector` whose `i`-th entry is the `PreprocessBundle`
 covering chunk *i*.
 
 Keyword interface mirrors `preprocess_corpus_streaming`:
-`cfg`, `vocab`, and `chunk_tokens`.
+`cfg`, `vocab`, `chunk_tokens`, and `channel_capacity`.
 Configuration options such as `strip_html_tags` or
 `minimum_token_frequency` must be placed in `cfg`.
 
@@ -218,14 +220,15 @@ end
 preprocess_corpus_streaming_full(srcs;
                                  cfg = PreprocessConfiguration(),
                                  vocab = nothing,
-                                 chunk_tokens = DEFAULT_CHUNK_TOKENS) -> PreprocessBundle
+                                 chunk_tokens = DEFAULT_CHUNK_TOKENS,
+                                 channel_capacity = DEFAULT_STREAM_CHANNEL_CAPACITY) -> PreprocessBundle
 
 Run the streaming pipeline, merge every chunk on the fly,
 and return one single PreprocessBundle that spans the
 entire corpus.
 
 Keyword arguments are forwarded to `preprocess_corpus_streaming`.
-In practice this means `cfg`, `vocab`, and `chunk_tokens`.
+In practice this means `cfg`, `vocab`, `chunk_tokens`, and `channel_capacity`.
 Throws when chunks were built with incompatible vocabularies
 
 ```julia
@@ -350,7 +353,8 @@ end
     preprocess_corpus_streaming(srcs;
                                 cfg           = PreprocessConfiguration(),
                                 vocab         = nothing,
-                                chunk_tokens  = DEFAULT_CHUNK_TOKENS) -> Channel{PreprocessBundle}
+                                chunk_tokens  = DEFAULT_CHUNK_TOKENS,
+                                channel_capacity = DEFAULT_STREAM_CHANNEL_CAPACITY) -> Channel{PreprocessBundle}
 
 Low-memory, **two-pass** variant of `preprocess_corpus` that yields a
 *stream* of `PreprocessBundle` s via a `Channel`.  
@@ -392,6 +396,7 @@ The same channel/chunks/full helpers are available in subword mode.
 | `cfg` | `PreprocessConfiguration` | Cleaning/tokenisation settings (default: fresh object). |
 | `vocab` | `Vocabulary` or `nothing` | Pre-existing vocabulary; when `nothing` it is inferred in pass 1. |
 | `chunk_tokens` | `Int` | Soft cap on tokens per chunk (default = `DEFAULT_CHUNK_TOKENS`). |
+| `channel_capacity` | `Int` | Bundle buffer capacity (default = `1`; use `0` for strict producer/consumer rendezvous). |
 
 ### Returns
 A **channel of type `Channel{PreprocessBundle}`**.  
@@ -407,17 +412,21 @@ for bund in ch                      # streaming training loop
 end
 ```
 
-note: The channel is unbuffered (`Inf` capacity) so each bundle is produced only
-    when the consumer is ready, minimising peak memory consumption.
+note: The channel is bounded (default capacity `1`). The producer can stay at most
+    one bundle ahead, which keeps memory bounded while preserving light prefetch.
 """
 function preprocess_corpus_streaming(srcs;
                                      cfg   ::PreprocessConfiguration = PreprocessConfiguration(),
                                      vocab ::Union{Nothing,Vocabulary} = nothing,
-                                     chunk_tokens::Int = DEFAULT_CHUNK_TOKENS)
+                                     chunk_tokens::Int = DEFAULT_CHUNK_TOKENS,
+                                     channel_capacity::Int = DEFAULT_STREAM_CHANNEL_CAPACITY)
+    channel_capacity >= 0 || throw(ArgumentError(
+        "channel_capacity must be >= 0; got $channel_capacity"))
 
     cfg.subword !== nothing &&
         return preprocess_subword_streaming(srcs;
-            cfg = cfg, vocab = vocab, chunk_tokens = chunk_tokens)
+            cfg = cfg, vocab = vocab, chunk_tokens = chunk_tokens,
+            channel_capacity = channel_capacity)
 
     if vocab === nothing
         freqs = _streaming_counts(srcs, cfg; chunk_tokens = chunk_tokens)  # constant-memory pass
@@ -426,7 +435,7 @@ function preprocess_corpus_streaming(srcs;
 
     raw_chunks = doc_chunk_iterator(srcs, cfg; chunk_tokens = chunk_tokens)  # Pass - streaming memory
 
-    return Channel{PreprocessBundle}(Inf) do ch
+    return Channel{PreprocessBundle}(channel_capacity) do ch
         for docs in raw_chunks
             clean_docs        = clean_documents(docs, cfg)
             tokens, offs      = tokenize_and_segment(clean_docs, cfg)
